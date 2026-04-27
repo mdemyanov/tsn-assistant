@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+
+# Worktrees
+.worktrees/
+.claude-worktrees/
+
+# Build artifacts
+node_modules/
+__pycache__/
+*.pyc
+target/
+dist/
+build/

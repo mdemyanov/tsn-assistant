@@ -20,7 +20,7 @@
 
 - **gramax@ai-assistants** — `gramax:writer`, `gramax:comments-read`, `gramax:comments-write`
 - **superpowers@claude-plugins-official** — `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, и др.
-- **project-template@local** — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы (`infoinstyle`, `correspondence-2`)
+- **project@local** — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы (`infoinstyle`, `correspondence-2`)
 
 ## Поток работы
 

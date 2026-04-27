@@ -38,7 +38,7 @@
 
 - `gramax@ai-assistants` — writer, comments-read, comments-write
 - `superpowers@claude-plugins-official` — brainstorming, writing-plans, executing-plans, TDD, debugging, ...
-- `project-template@local` — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы CTO
+- `project@local` — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы CTO
 
 Marketplaces и enabled-плагины описаны в `.claude/settings.json`.
 

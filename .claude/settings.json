@@ -1,0 +1,21 @@
+{
+  "extraKnownMarketplaces": {
+    "ai-assistants": {
+      "source": {
+        "source": "github",
+        "repo": "mdemyanov/ai-assistants"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "gramax@ai-assistants": true,
+    "superpowers@claude-plugins-official": true,
+    "project-template@local": true
+  }
+}

@@ -1,0 +1,32 @@
+syntax: XML
+
+properties:
+  - name: Тип контента
+    type: enum
+    values:
+      - Требование
+      - Архитектура
+      - ADR
+      - Runbook
+      - Исследование
+      - Глоссарий
+      - Прочее
+    required: true
+
+  - name: Фаза
+    type: enum
+    values:
+      - PoC
+      - MVP
+      - Pilot
+      - Production
+    required: true
+
+  - name: Статус
+    type: enum
+    values:
+      - Draft
+      - Review
+      - Approved
+      - Superseded
+    required: true

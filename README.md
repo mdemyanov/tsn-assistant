@@ -16,6 +16,7 @@
 | Карта команды и контракт вызова | `AGENTS.md` | PM |
 | Универсальное ядро правил | `CLAUDE.md` | Все агенты |
 | База знаний Gramax | `content/` | BA, SA, DevOps |
+| Глоссарий и research-выжимки | `content/10-domain/` | BA, Researcher |
 | Спеки (brainstorming) | `docs/superpowers/specs/` | PM |
 | Планы реализации (writing-plans) | `docs/superpowers/plans/` | PM |
 | Журнал уроков | `docs/lessons-learned.md` | Все агенты |

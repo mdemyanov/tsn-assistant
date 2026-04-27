@@ -29,6 +29,10 @@ bash scripts/apply-overlay.sh --remove naumen-smp
 
 Все вставки между маркерами `<!-- OVERLAY:naumen-smp:start -->` / `:end -->` (или `# OVERLAY:naumen-smp:start/end` в YAML).
 
+## Дополнительные материалы (не применяются автоматически)
+
+- `references.md` — справочные пути и ссылки на документацию SMP, ITSM365, эталонные репо. Используй как лор при работе с overlay. НЕ копируется и не вставляется в проект — оставлен как маннуал для разработчика.
+
 ## Требования
 
 - Глобальный плагин `naumen-smp-scripting` (для Groovy-скриптов SMP)

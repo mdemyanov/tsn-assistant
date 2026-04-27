@@ -7,6 +7,7 @@
 - `adr/` — Architecture Decision Records (нумерация: `001-<slug>.md`, `002-<slug>.md`, ...)
 - `roadmap.md` — фазы и milestone'ы (создаётся PM)
 - `stakeholders.md` — карта стейкхолдеров (создаётся PM)
+- `risks.md` — реестр рисков (создаётся PM, опционально)
 
 ## Правила
 

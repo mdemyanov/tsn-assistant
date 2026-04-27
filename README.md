@@ -27,7 +27,7 @@
 - **Аналитики:** `/research <тема>` → `/ba new-requirement <slug>` → ревью `/pm-review`.
 - **Руководители:** `/pm decompose <фича>` для новой задачи; `/pm status` для отчёта.
 - **Разработчики:** получают артефакт SA через `/sa design <фича>`, реализуют через `/dev implement <фича>` (TDD), документируют runbook через `/devops runbook <процедура>`.
-- **Все:** для текстов — `infoinstyle`; для писем — `correspondence-2`; для многошаговых задач — `superpowers:brainstorming`.
+- **Все:** для текстов — `infoinstyle`; для многошаговых задач — `superpowers:brainstorming`.
 
 ## Ветвление
 

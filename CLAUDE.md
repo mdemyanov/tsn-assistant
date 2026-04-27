@@ -39,7 +39,6 @@
 | Реализация фичи или фикса | `superpowers:test-driven-development` |
 | Перед claim'ом «готово» | `superpowers:verification-before-completion` |
 | Адаптация текста под инфостиль | `infoinstyle` |
-| Деловое письмо/сообщение | `correspondence-2` |
 
 ## Красные линии (универсальные)
 

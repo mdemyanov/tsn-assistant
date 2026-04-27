@@ -16,9 +16,10 @@ trap cleanup EXIT
 echo "==> Setting up test repo at $TMP"
 rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP/"
 cd "$TMP"
+GIT_TEST="git -c user.email=test@example.com -c user.name=test"
 git init -q -b main
 git add -A
-git commit -q -m "test baseline"
+$GIT_TEST commit -q -m "test baseline"
 
 PASS=0
 FAIL=0
@@ -51,7 +52,7 @@ assert "Scenario property in doc-root.yaml" "grep -q 'Сценарий' content/
 echo ""
 echo "==> Test 2: second apply is idempotent (no diff)"
 git add -A
-git commit -q -m "after first apply"
+$GIT_TEST commit -q -m "after first apply"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
 DIFF_LINES="$(git diff --stat | wc -l | tr -d ' ')"
 assert "no diff after second apply" "[ \"$DIFF_LINES\" = '0' ]"

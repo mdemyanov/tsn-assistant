@@ -31,9 +31,10 @@ assert() {
 echo "==> Setting up test repo at $TMP"
 rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP/"
 cd "$TMP"
+GIT_TEST="git -c user.email=test@example.com -c user.name=test"
 git init -q -b main
 git add -A
-git commit -q -m "test baseline"
+$GIT_TEST commit -q -m "test baseline"
 
 # ===== T1: JSON validity =====
 echo ""
@@ -73,13 +74,6 @@ assert "glossary.md exists" "[ -f content/10-domain/glossary.md ]"
 # ===== T5: init.sh works =====
 echo ""
 echo "==> T5: init.sh substitutes PROJECT_NAME and creates branch"
-# README.md может отсутствовать (Task 22 создаст top-level README) — создадим заглушку
-# с {{PROJECT_NAME}} для совместимости теста с любым состоянием шаблона.
-if [[ ! -f README.md ]]; then
-  echo "# {{PROJECT_NAME}}" > README.md
-  git add README.md
-  git commit -q -m "stub README for test"
-fi
 bash scripts/init.sh "test-project" >/dev/null
 assert "PROJECT_NAME replaced in CLAUDE.md" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
 assert "PROJECT_NAME replaced in AGENTS.md" "! grep -q '{{PROJECT_NAME}}' AGENTS.md"
@@ -91,11 +85,11 @@ assert ".env created" "[ -f .env ]"
 echo ""
 echo "==> T6: apply-overlay.sh idempotent"
 git add -A
-git commit -q -m "after init"
+$GIT_TEST commit -q -m "after init"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
 assert "marker in CLAUDE.md after apply" "grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
 git add -A
-git commit -q -m "after apply"
+$GIT_TEST commit -q -m "after apply"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
 DIFF_LINES="$(git diff --stat | wc -l | tr -d ' ')"
 assert "second apply produces no diff" "[ \"$DIFF_LINES\" = '0' ]"

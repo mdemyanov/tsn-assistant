@@ -26,6 +26,13 @@ if [[ "$1" == "--remove" ]]; then
 fi
 
 OVERLAY_NAME="$1"
+shift
+
+if [[ $# -gt 0 ]]; then
+  echo "ERROR: unexpected arguments: $*"
+  exit 2
+fi
+
 OVERLAY_DIR="docs/overlays/$OVERLAY_NAME"
 
 if [[ ! -d "$OVERLAY_DIR" ]]; then

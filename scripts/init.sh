@@ -10,9 +10,9 @@ if ! git rev-parse --git-dir >/dev/null 2>&1; then
   exit 1
 fi
 
-# 2. Проверка, что мы в корне проекта (есть CLAUDE.md и README.md)
-if [[ ! -f CLAUDE.md ]] || [[ ! -f README.md ]]; then
-  echo "ERROR: run from project root (where CLAUDE.md and README.md are)."
+# 2. Проверка, что мы в корне проекта (есть CLAUDE.md)
+if [[ ! -f CLAUDE.md ]]; then
+  echo "ERROR: run from project root (where CLAUDE.md is)."
   exit 1
 fi
 
@@ -25,6 +25,11 @@ fi
 
 if [[ -z "$NAME" ]]; then
   echo "ERROR: project name cannot be empty."
+  exit 1
+fi
+
+if [[ ! "$NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "ERROR: project name must match [A-Za-z0-9._-]+ (got: '$NAME')."
   exit 1
 fi
 

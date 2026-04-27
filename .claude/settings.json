@@ -16,6 +16,6 @@
   "enabledPlugins": {
     "gramax@ai-assistants": true,
     "superpowers@claude-plugins-official": true,
-    "project-template@local": true
+    "project@local": true
   }
 }

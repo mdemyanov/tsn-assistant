@@ -90,36 +90,43 @@ def commentLengthsAll = api.db.query('''
     WHERE text IS NOT NULL AND length(text) > 0
 ''').list().collect { it as Long }
 
-// Распределение длины комментариев — только для source типа issue
+// На llm2 api.db.query поддерживает только одноаргументный variant query(String)
+// (нет setParameter / Map). NFR-043 запрещает интерполяцию переменных, но
+// допускает статические литералы в HQL — здесь используем их.
+// comment.source — строка UUID вида 'issue$NNN' / 'problem$NNN', не объект,
+// поэтому фильтруем по prefix через LIKE на самой строке.
+
+// Распределение длины комментариев — только для source типа issue (LIKE 'issue$%')
 def commentLengthsIssue = api.db.query('''
     SELECT length(coalesce(c.text, ''))
     FROM comment c
     WHERE c.text IS NOT NULL AND length(c.text) > 0
-      AND c.source.metaClass LIKE :issuePrefix
-''', [issuePrefix: 'issue%']).list().collect { it as Long }
+      AND c.source LIKE 'issue$%'
+''').list().collect { it as Long }
 
 // Распределение длины комментариев — только для source типа problem
 def commentLengthsProblem = api.db.query('''
     SELECT length(coalesce(c.text, ''))
     FROM comment c
     WHERE c.text IS NOT NULL AND length(c.text) > 0
-      AND c.source.metaClass LIKE :problemPrefix
-''', [problemPrefix: 'problem%']).list().collect { it as Long }
+      AND c.source LIKE 'problem$%'
+''').list().collect { it as Long }
 
-// ── Комментариев на заявку (через source) ─────────────────────────────────────
+// ── Комментариев на заявку (через source как строка UUID) ─────────────────────
+// Считаем количество комментариев per source-UUID, далее агрегируем в распределение
 def commentsPerIssue = api.db.query('''
     SELECT count(c)
-    FROM issue i, comment c
-    WHERE c.source = i
-    GROUP BY i
+    FROM comment c
+    WHERE c.source LIKE 'issue$%'
+    GROUP BY c.source
 ''').list().collect { it as Long }
 
 // ── Комментариев на problem ───────────────────────────────────────────────────
 def commentsPerProblem = api.db.query('''
     SELECT count(c)
-    FROM problem p, comment c
-    WHERE c.source = p
-    GROUP BY p
+    FROM comment c
+    WHERE c.source LIKE 'problem$%'
+    GROUP BY c.source
 ''').list().collect { it as Long }
 
 // ── Problem.description ───────────────────────────────────────────────────────

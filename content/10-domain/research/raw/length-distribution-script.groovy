@@ -55,21 +55,46 @@ def issueSubjLengths = api.db.query('''
     WHERE subject IS NOT NULL AND length(subject) > 0
 ''').list().collect { it as Long }
 
-// ── IssueComment.text (или подкласс — уточнить по метамодели) ─────────────────
-// FQN комментария может отличаться от 'comment' — researcher уточняет через MCP
-// metamodel_export_class перед запуском скрипта.
-def commentLengths = api.db.query('''
+// ── comment.text — универсальный FQN комментария ──────────────────────────────
+// На llm2 'comment' — общий класс для комментариев ко всем источникам (issue,
+// problem, etc.); ссылка на источник лежит в атрибуте source.
+// Распределение длины комментария по всем источникам (агрегат)
+def commentLengthsAll = api.db.query('''
     SELECT length(coalesce(text, ''))
     FROM comment
     WHERE text IS NOT NULL AND length(text) > 0
 ''').list().collect { it as Long }
 
-// ── Комментариев на заявку ────────────────────────────────────────────────────
+// Распределение длины комментариев — только для source типа issue
+def commentLengthsIssue = api.db.query('''
+    SELECT length(coalesce(c.text, ''))
+    FROM comment c
+    WHERE c.text IS NOT NULL AND length(c.text) > 0
+      AND c.source.metaClass LIKE :issuePrefix
+''', [issuePrefix: 'issue%']).list().collect { it as Long }
+
+// Распределение длины комментариев — только для source типа problem
+def commentLengthsProblem = api.db.query('''
+    SELECT length(coalesce(c.text, ''))
+    FROM comment c
+    WHERE c.text IS NOT NULL AND length(c.text) > 0
+      AND c.source.metaClass = :problemFqn
+''', [problemFqn: 'problem']).list().collect { it as Long }
+
+// ── Комментариев на заявку (через source) ─────────────────────────────────────
 def commentsPerIssue = api.db.query('''
     SELECT count(c)
-    FROM issue i
-    LEFT JOIN i.comments c
+    FROM issue i, comment c
+    WHERE c.source = i
     GROUP BY i
+''').list().collect { it as Long }
+
+// ── Комментариев на problem ───────────────────────────────────────────────────
+def commentsPerProblem = api.db.query('''
+    SELECT count(c)
+    FROM problem p, comment c
+    WHERE c.source = p
+    GROUP BY p
 ''').list().collect { it as Long }
 
 // ── Problem.description ───────────────────────────────────────────────────────
@@ -91,12 +116,15 @@ def report = [
     stand       : 'llm2',
     note        : 'est_tokens = chars / 4 (rough). Verify with embedding API on representative sample.',
     distributions: [
-        stats('issue.description',   issueDescLengths),
-        stats('issue.subject',       issueSubjLengths),
-        stats('comment.text',        commentLengths),
-        stats('comments_per_issue',  commentsPerIssue),
-        stats('problem.description', problemDescLengths),
-        stats('kbArticle.text',      kbTextLengths)
+        stats('issue.description',     issueDescLengths),
+        stats('issue.subject',         issueSubjLengths),
+        stats('comment.text:all',      commentLengthsAll),
+        stats('comment.text:issue',    commentLengthsIssue),
+        stats('comment.text:problem',  commentLengthsProblem),
+        stats('comments_per_issue',    commentsPerIssue),
+        stats('comments_per_problem',  commentsPerProblem),
+        stats('problem.description',   problemDescLengths),
+        stats('kbArticle.text',        kbTextLengths)
     ]
 ]
 

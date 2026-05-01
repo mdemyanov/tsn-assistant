@@ -28,4 +28,86 @@ Ubiquitous Language проекта. Термины, используемые в 
 
 -->
 
-(пусто — добавляется по мере роста проекта)
+<!-- Проектные термины pg_vector_service -->
+
+### pgvector
+Расширение PostgreSQL для хранения и поиска векторных представлений. На стенде `llm2` установлена версия 0.8.1.
+**Используется в:** SA, Dev, DevOps
+
+### HNSW
+Hierarchical Navigable Small World — иерархический ANN-индекс в pgvector. Используется как индекс по умолчанию для семантического поиска (`vector_cosine_ops`, `m=16`, `ef_construction=64`). См. ADR-010.
+**Не путать с:** IVFFlat (альтернативный индекс на k-means).
+**Используется в:** SA, Dev, DevOps
+
+### IVFFlat
+Inverted file (k-means) — альтернативный pgvector-индекс. Быстрее строится, но требует периодического `REINDEX` на инкрементах. На PoC не используем (см. ADR-010 / pgvector-indexes.md §3).
+**Используется в:** SA
+
+### Cosine similarity
+Метрика близости векторов; в pgvector — оператор `<=>` (cosine distance, similarity = `1 - <=>`). Дефолт для трансформерных эмбеддингов.
+**Синонимы:** косинусное сходство.
+**Используется в:** BA, SA, Dev
+
+### Embedding (эмбеддинг)
+Векторное представление текста, получаемое от ML-модели. В нашем PoC — 256-мерный вектор от Yandex Cloud Foundation Models.
+**Используется в:** BA, SA, Dev
+
+### `modelUri`
+Идентификатор embedding-модели в Yandex Cloud (`emb://<folder-id>/text-search-doc/latest`). Сохраняется в каждой записи `pg_vector_service__vectors.model_version` (NFR-030).
+**Используется в:** SA, Dev
+
+### `composite_hash`
+SHA-256 от composite-text (whitelist-атрибуты в фиксированном порядке) + версия чанкинг-стратегии. Ключ идемпотентности UC1 (NFR-020) — повторный прогон джобы при том же тексте не делает YC FM-вызов.
+**Используется в:** SA, Dev
+
+### Whitelist (атрибутов)
+Реестр атрибутов SMP-класса, разрешённых к отправке в Yandex Cloud. PII-default-deny (ADR-005). Изменения whitelist'а имеют версию (NFR-032) и инвалидируют затронутые векторы.
+**Используется в:** BA, SA, Dev
+
+### `tenant_id`
+Колонка вектор-таблицы для будущей multi-tenant изоляции (BR-008). На PoC `llm2` — single-tenant, значение константа `'llm2'`.
+**Используется в:** SA, Dev
+
+### Hibernate `SessionFactory` / script-as-binding-carrier
+Канал доступа к БД из JAR-модуля. `beanFactory.getBean('sessionFactory').getCurrentSession()` — Spring-bean SMP-платформы. Паттерн `script-as-binding-carrier`: SMP script-module держит binding (`api`, `beanFactory`, `modules`) и передаёт в JAR-классы через конструктор (Runner-обёртка `HibernateSessionProvider` в `adapters/db/`, по образцу `SmpSuperUserRunner` из эталона `naumen-smp-mcp`). Заменяет `api.db.query` для JAR-кода. См. memory `reference_smp_db_access_hibernate.md`.
+**Используется в:** SA, Dev
+
+### Runner-pattern
+Класс-обёртка в `adapters/{smp,db}/`, инкапсулирующий `api.tx.call { ... }` (+ опционально elevation через `authorizationRunnerServiceImpl.callAsSuperUser`). Принимает `beanFactory`+`api` через конструктор. Изолирует core от SMP-специфики.
+**Используется в:** SA, Dev
+
+<!-- OVERLAY:naumen-smp:start -->
+### Заявка
+Запрос пользователя в Service Desk на выполнение какого-либо действия. Технический термин SMP — `serviceCall`.
+**Используется в:** BA, SA, Dev
+
+### Обращение
+Сообщение пользователя, требующее обработки оператором. В SMP — общий термин для заявок, инцидентов, запросов на изменение.
+**Используется в:** BA, SA
+
+### Услуга
+Сервис, который предоставляется в рамках Service Desk. Каталог услуг — основа SLA и приёма заявок.
+**Используется в:** BA, SA
+
+### Сервис
+Технический объект SMP, поддерживающий услугу. Один сервис может поддерживать несколько услуг.
+**Не путать с:** Услуга (бизнес-уровень)
+**Используется в:** SA, Dev
+
+### Ответственный объект (ОО)
+Сотрудник/группа, на которого назначена заявка. В SMP представлен как FQN-объект `employee$user`.
+**Синонимы:** Исполнитель, Назначенный
+**Используется в:** BA, SA, Dev
+
+### Договор SLA
+Соглашение об уровне обслуживания: время реакции, время решения, доступность. В SMP — отдельный FQN-объект.
+**Используется в:** BA, SA
+
+### Очередь
+Группа исполнителей, на которую распределяются заявки до назначения конкретному ОО.
+**Используется в:** BA, SA, Dev
+
+### FQN
+Fully Qualified Name — полное имя SMP-объекта, например `serviceCall$incident`. Используется в HQL и REST.
+**Используется в:** SA, Dev
+<!-- OVERLAY:naumen-smp:end -->

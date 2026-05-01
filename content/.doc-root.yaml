@@ -30,3 +30,16 @@ properties:
       - Approved
       - Superseded
     required: true
+
+# OVERLAY:naumen-smp:start
+  - name: Сценарий
+    type: enum
+    values:
+      - A-Workload
+      - B-Quality
+      - C-Reporting
+      - D-Catalog
+      - E-KB
+      - F-Patterns
+    required: false
+# OVERLAY:naumen-smp:end

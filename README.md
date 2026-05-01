@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}}
+# pg_vector_service
 
 Внутренний проект Naumen на основе шаблона `project_template`.
 

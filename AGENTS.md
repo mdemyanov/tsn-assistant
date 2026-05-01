@@ -1,4 +1,4 @@
-# AGENTS.md — {{PROJECT_NAME}}
+# AGENTS.md — pg_vector_service
 
 Матрица ролей, режим исполнения и процесс самоулучшения команды AI-агентов проекта.
 

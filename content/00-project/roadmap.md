@@ -64,14 +64,17 @@ flowchart LR
 
 | ID | Что | Ответственный | Блокирует | Срок |
 |----|-----|---------------|-----------|------|
-| **0.4** | Подтверждение Сахабетдинова: установлена ли pgvector ≥ 0.8.x на БД стенда `llm2`; согласование DDL вектор-таблицы (схема/tablespace, `maintenance_work_mem`); сетевой доступ `llm2 → *.api.cloud.yandex.net:443` | Демьянов (пинг + запись в issue/wiki); Сахабетдинов (подтверждение) | ADR-002 OQ; ADR-003 (выбор индекса); ADR-004 (DDL); DEVOPS-001 (миграция); вся фаза `/dev` | до старта PoC iter 1 |
-| **0.5** | Настроить `yc` CLI: создать сервисный аккаунт `pg-vector-service-poc`, выпустить ключ Foundation Models, проверить вызов embedding-модели; положить `sa-key.json` в SMP secret store на `llm2` | Демьянов (CLI + ключ); Сахабетдинов (secret store на стенде) | ADR-009 → ADR-XXX (concrete model); RES-002 closeout; RES-003 (budget); DEV-005 (`EmbeddingClient` integration test) | до старта PoC iter 1 |
+| **0.4** | ✅ Закрыт 2026-05-01. pgvector 0.8.1 на `llm2`, схема `public`, single-tenant, сетевой доступ к YC FM подтверждены. DDL — через bootstrap JAR'а (без отдельного окна работ) | Демьянов / Сахабетдинов | — | ✅ done |
+| **0.5** | ✅ Закрыт. SA `pg-vector-poc`, API-Key в `.secrets/yc-api-key.json`, smoke-curl зелёный. Деплой ключа на стенд `llm2` — DEVOPS-008 | Демьянов | — | ✅ done |
 | **0.6** | Live-выгрузка метамодели `issue` / `knowledgeBase` / `problem` со стенда `llm2` через MCP `naumen-smp-dev-admin` | Researcher (`/research`) | BA (whitelist атрибутов) — **закрыто** ([smp-metamodel.md](../10-domain/research/smp-metamodel.md), RES-001 done) | ✅ done |
+| **OWNER-003** | ✅ Закрыт 2026-05-01. Решение owner'а: **single-схема на стенд** (один тенант на инстанс БД). ADR-004 — без discriminator-колонки tenant; требуется апдейт ADR-004 | Демьянов | — | ✅ done |
+| **OWNER-004** | ✅ Закрыт 2026-05-01. Решение owner'а: **IAM-token через JWT** (не статический Api-Key). Требуется новый `ADR-yc-auth` (`/sa`) и реализация DEV-021 `IamTokenCache` обязательна | Демьянов | новый `ADR-yc-auth` | ✅ done |
+| **RES-003-pricing / RES-003** | ✅ Закрыт 2026-05-01 ([yc-pricing.md](../10-domain/research/yc-pricing.md)). Embedding 0,0101 ₽ / 1k юнитов; медиана PoC ≈ 200 ₽; верх ≈ 50 500 ₽. LLM-валидация UC3 — доминирующая статья, нужен cap top-K | Демьянов | — | ✅ done |
 
 Не блокеры, но желательно до `/dev iter 1`:
-- **RES-002 closeout** — пункты «modelUri / dim / лимиты / цены» в [yc-foundation-models.md](../10-domain/research/yc-foundation-models.md). Сейчас public-docs за CAPTCHA; верифицировать через `yc ai foundation-models list` после Phase 0.5.
-- **RES-003** — `budget-estimate.md` (расчёт стоимости full-rescan на медиане 100k–300k объектов). Без неё нельзя зафиксировать NFR-061 (дневной лимит) и порог `NFR-UC1-002`.
-- **OQ-UC1-1 / OA-3** — single vs multi-tenant на `llm2`. Влияет на схему вектор-таблицы (ADR-004): отдельная таблица на тенант или discriminator-колонка.
+- **RES-002 closeout** — ✅ закрыт ([yc-foundation-models.md](../10-domain/research/yc-foundation-models.md), [ADR-010](adr/010-embedding-model-selection.md)).
+- **RES-003** — ✅ закрыт 2026-05-01 ([yc-pricing.md](../10-domain/research/yc-pricing.md)). Embedding для медианы 100k ≈ 200 ₽; не является ограничителем PoC. LLM-валидация UC3 — доминирующая статья, нужен cap top-K.
+- **OQ-UC1-1 / OA-3** — ✅ закрыт 2026-05-01 решением owner'а: single-схема на стенд (один тенант на БД). Discriminator-колонка `tenant` в ADR-004 не нужна; ADR-004 ждёт апдейта.
 
 Полный реестр open questions — в [принципиальной архитектуре §11](../40-architecture/principal-architecture.md) (16 OA-вопросов) + per-UC OQ в BA-артефактах. Все они переведены в backlog как `OWNER-*` / `RES-*` / `BA-*` задачи в [backlog.md](backlog.md).
 

@@ -23,6 +23,7 @@ properties:
 | RES-006 | ✅ done | Кластеризация на векторах: DBSCAN/HDBSCAN, near-duplicate threshold | [clustering-algos.md](clustering-algos.md) |
 | RES-007 | ✅ done | Naumen SMP — scheduled tasks через `api.scheduler` | [smp-scheduled-jobs.md](smp-scheduled-jobs.md) |
 | RES-008 | ✅ done | Эталон проекта `naumen-smp-mcp` — что копировать, что адаптировать | [reference-project-notes.md](reference-project-notes.md) |
+| RES-009.1 | 🔶 partial | Domain & data analysis для стратегии хранения векторов (волна 1): §1 UC×класс×payload, §2 реестр FQN — выполнены; §3/3a/3b — ожидают запуска скрипта owner'ом на llm2 | [vector-storage-domain.md](vector-storage-domain.md) — MCP-сессия протухла; скрипт готов в `raw/length-distribution-script.groovy` |
 
 **Допущения для перехода в `/ba`** (зафиксированы owner'ом 2026-05-01):
 - pgvector на стенде `llm2` свежий (≥0.8.x), HNSW поддерживается.

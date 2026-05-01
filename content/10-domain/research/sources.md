@@ -23,7 +23,8 @@ properties:
 | RES-006 | ✅ done | Кластеризация на векторах: DBSCAN/HDBSCAN, near-duplicate threshold | [clustering-algos.md](clustering-algos.md) |
 | RES-007 | ✅ done | Naumen SMP — scheduled tasks через `api.scheduler` | [smp-scheduled-jobs.md](smp-scheduled-jobs.md) |
 | RES-008 | ✅ done | Эталон проекта `naumen-smp-mcp` — что копировать, что адаптировать | [reference-project-notes.md](reference-project-notes.md) |
-| RES-009.1 | 🔶 partial | Domain & data analysis для стратегии хранения векторов (волна 1): §1 UC×класс×payload, §2 реестр FQN — выполнены; §3/3a/3b — ожидают запуска скрипта owner'ом на llm2 | [vector-storage-domain.md](vector-storage-domain.md) — MCP-сессия протухла; скрипт готов в `raw/length-distribution-script.groovy` |
+| RES-009.1 | ✅ done | Domain & data analysis для стратегии хранения векторов (волна 1): распределение длин на llm2, матрица UC×класс×payload, реестр FQN | [vector-storage-domain.md](vector-storage-domain.md) — закрыт 2026-05-01. Рекомендация: стратегия D (hybrid: issue/A + KB/C) |
+| RES-009.2 | ✅ done | Сравнение стратегий хранения (волна 2): матрица 5×8 dimensions, закрытие 10 OQ, DDL skeleton, эскалации BA/PM | [vector-storage-strategies.md](vector-storage-strategies.md) — закрыт 2026-05-01. Deferred: smoke OQ-8 (лимит токенов YC FM — ожидает owner'а) |
 
 **Допущения для перехода в `/ba`** (зафиксированы owner'ом 2026-05-01):
 - pgvector на стенде `llm2` свежий (≥0.8.x), HNSW поддерживается.

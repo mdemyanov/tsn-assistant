@@ -1,4 +1,9 @@
 {
+  "enabledPlugins": {
+    "gramax@ai-assistants": true,
+    "superpowers@claude-plugins-official": true,
+    "project@local": true
+  },
   "extraKnownMarketplaces": {
     "ai-assistants": {
       "source": {
@@ -11,11 +16,12 @@
         "source": "github",
         "repo": "anthropics/claude-plugins"
       }
+    },
+    "local": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/mdemyanov/Devel/pg_vector_service"
+      }
     }
-  },
-  "enabledPlugins": {
-    "gramax@ai-assistants": true,
-    "superpowers@claude-plugins-official": true,
-    "project@local": true
   }
 }

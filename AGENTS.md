@@ -1,4 +1,4 @@
-# AGENTS.md — {{PROJECT_NAME}}
+# AGENTS.md — pg_vector_service
 
 Матрица ролей, режим исполнения и процесс самоулучшения команды AI-агентов проекта.
 
@@ -12,6 +12,7 @@
 | **SA** | subagent | Sonnet | `/sa` → `sa-agent` | `content/00-project/adr/`, `content/40-architecture/` |
 | **Dev** | subagent | Sonnet | `/dev` → `dev-agent` | `src/`, `content/60-implementation/` |
 | **DevOps** *(optional)* | subagent | Sonnet | `/devops` → `devops-agent` | `content/70-operations/` |
+| **ITSM-аналитик** *(optional)* | subagent | Sonnet (Opus по запросу) | `/itsm` → `itsm-analyst-agent` | `content/10-domain/itsm-reviews/` или inline-review |
 
 **Почему так:** PM-координация живёт в main-context, чтобы не раздувать контекст субагентов. Ролевая работа (BA/SA/Dev/DevOps/Researcher) вытесняется в субагенты на более дешёвой модели — экономия LLM-бюджета на типичной сессии.
 
@@ -28,6 +29,8 @@ DevOps помечен как **optional** — для проектов без я�
 5. **DevOps** *(если нужно)* — деплой, runbook, мониторинг → `content/70-operations/`
 
 **PM** координирует на каждом этапе: приоритизирует, разрешает блокеры, запускает `/pm-review` перед merge в `public`.
+
+**Опциональный консультант — ITSM-аналитик** (`/itsm` → `itsm-analyst-agent`) доступен на любом этапе: BA при формулировке JTBD, SA при выборе паттернов, PM при оценке реалистичности UC. Не блокирует и не заменяет основные роли. Вызывается явно по триггерам: появление ITSM-терминов (incident/problem/KB/SLA/RCA), сомнения в реалистичности сценария, выбор AI-сигналов, терминологические споры. Артефакты — Gramax-комментарии или mini-review в `content/10-domain/itsm-reviews/`; **в `content/30-requirements/`, `content/00-project/adr/`, `content/40-architecture/` не пишет**. Спецификация роли: `content/30-requirements/roles/itsm-analyst.md`.
 
 Ветвление: `private` — рабочая ветка; `public` — публикация в Gramax после ревью PM.
 
@@ -51,6 +54,29 @@ DevOps помечен как **optional** — для проектов без я�
 
 Субагент **не ищет контекст «вокруг»** — работает по явно переданному скопу.
 
+### Особенность вызова `/itsm`
+
+ITSM-аналитик — консультативная роль, артефакт ≠ требование/ADR/архитектура. В prompt'е укажи:
+
+1. **Цель** — что оценить с точки зрения ITSM-методологии (например, «валидировать JTBD UC-S2 на реалистичность single-comment signal»).
+2. **Кто потребитель ответа** — BA / SA / PM (влияет на формат рекомендации).
+3. **Входные файлы** — конкретный объект ревью (UC / ADR / фрагмент архитектуры) + связанные артефакты, упомянутые явно.
+4. **Ожидаемый формат**: inline-ответ / Gramax-комментарий / mini-review (только для сложных кейсов с фиксацией).
+5. **НЕ запрашивай**: правок в `content/30-requirements/`, `content/00-project/adr/`, `content/40-architecture/`; web-search / ctx7 (это `/research`).
+
+Пример корректного prompt'а для `/itsm`:
+
+```
+Цель: валидировать JTBD UC-S2 «поиск похожих заявок по тексту одного комментария»
+       на реалистичность сигнала с точки зрения практики Service Desk.
+Потребитель: BA (применит рекомендации в правках UC-S2).
+Входы: content/30-requirements/functional/uc-s2-find-similar-by-comments.md,
+       content/30-requirements/roles/itsm-analyst.md
+Формат: Gramax-комментарий к UC-S2 + краткий inline-ответ в чате.
+Критерии: оценка single-comment vs composite signal с references на
+          ServiceNow Predictive Intelligence или KCS v6.
+```
+
 ## Шаблон декомпозиции фичи (для main-PM)
 
 Каждая фича проходит фазы: исследование (опц.) → анализ (BA) → проектирование (SA) → реализация (Dev) → развёртывание (DevOps).
@@ -70,12 +96,13 @@ DevOps помечен как **optional** — для проектов без я�
 ### Задачи
 - [ ] RES-XXX: [исследовать тему] → `content/10-domain/research/<file>.md` — `/research <prompt>`  *(опционально)*
 - [ ] BA-XXX: [сформулировать требования] → `content/30-requirements/<file>.md` — `/ba <prompt>`
+- [ ] ITSM-XXX: [ITSM-валидация UC / терминологии / AI-сигналов] → inline или `content/10-domain/itsm-reviews/<slug>.md` — `/itsm <prompt>`  *(опционально, рекомендован при появлении ITSM-терминов: incident/problem/KB/SLA/RCA)*
 - [ ] SA-XXX: [спроектировать] — зависит от BA-XXX → `content/40-architecture/<file>.md` — `/sa <prompt>`
 - [ ] DEV-XXX: [реализовать] — зависит от SA-XXX — `/dev <prompt>`
 - [ ] OPS-XXX: [runbook/deploy] — зависит от DEV-XXX — `/devops <prompt>`  *(если нужно)*
 
 ### Зависимости
-RES → BA → SA → DEV → OPS
+RES → BA → (ITSM, опц.) → SA → (ITSM, опц.) → DEV → OPS
 
 ### Риски
 [Что может пойти не так]
@@ -97,6 +124,7 @@ RES → BA → SA → DEV → OPS
 | Архитектурный trade-off | SA | `/sa оценить [варианты]` |
 | Технический блокер | Dev | `/dev исследовать [проблема]` |
 | Инфраструктурный вопрос | DevOps | `/devops оценить [задача]` |
+| ITSM-методология / реалистичность UC | ITSM-аналитик | `/itsm review [path]` или `/itsm [вопрос]` |
 | Бюджет / стейкхолдер-доступ | Спонсор проекта | Эскалация в отчёте |
 
 ## Процесс самоулучшения (Retrospective)

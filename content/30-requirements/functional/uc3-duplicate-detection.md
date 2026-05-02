@@ -1,14 +1,29 @@
 ---
 order: 30
-title: "UC3 — Обнаружение дублей и однотипных SMP-объектов"
+title: "UC3 — Обнаружение дублей и однотипных SMP-объектов [SUPERSEDED]"
 properties:
   - Тип контента: Требование
   - Фаза: PoC
-  - Статус: Draft
+  - Статус: Superseded
   - Сценарий: F-Patterns
 ---
 
 # UC3 — Обнаружение дублей и однотипных SMP-объектов
+
+<note type="warning">
+
+**Статус: Superseded (split)**
+
+Этот UC разделён на два самостоятельных требования в волне BA-002:
+
+- **UC-C1** (`content/30-requirements/functional/uc-c1-cluster-by-description.md`) — кластеризация по composite_extended (атрибутный сигнал). Supersedes UC3.
+- **UC-C2** (`content/30-requirements/functional/uc-c2-cluster-by-description-comments.md`) — кластеризация по combined signal (атрибуты + комментарии, новый).
+
+**Трассируемость AC:** UC3.AC-001..010 → UC-C1.AC-001..010.
+
+Этот файл сохранён для ретроспективного контекста.
+
+</note>
 
 ## JTBD
 

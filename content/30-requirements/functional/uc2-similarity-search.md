@@ -1,14 +1,31 @@
 ---
 order: 20
-title: "UC2 — Семантический поиск похожих SMP-объектов"
+title: "UC2 — Семантический поиск похожих SMP-объектов [SUPERSEDED]"
 properties:
   - Тип контента: Требование
   - Фаза: PoC
-  - Статус: Draft
+  - Статус: Superseded
   - Сценарий: F-Patterns
 ---
 
 # UC2 — Семантический поиск похожих SMP-объектов
+
+<note type="warning">
+
+**Статус: Superseded (split)**
+
+Этот UC разделён на четыре самостоятельных требования в волне BA-002:
+
+- **UC-S1** (`content/30-requirements/functional/uc-s1-find-similar-issues.md`) — поиск похожих заявок по composite_extended (same-class + cross-class issue→KB/problem).
+- **UC-S2** (`content/30-requirements/functional/uc-s2-find-similar-by-comments.md`) — поиск заявок со схожими комментариями (новый).
+- **UC-S3** (`content/30-requirements/functional/uc-s3-find-similar-faq.md`) — FAQ-сценарий (новый).
+- **UC-S4** (`content/30-requirements/functional/uc-s4-find-similar-kb.md`) — поиск похожих KB-статей (chunked parent-document retrieval).
+
+**Трассируемость AC:** UC2.AC-1..14 → UC-S1.AC-001..014 (issue/KB-сценарий).
+
+Этот файл сохранён для ретроспективного контекста.
+
+</note>
 
 Use case 2 проекта `pg_vector_service`: top-K similarity search по векторным
 представлениям SMP-объектов (`issue`, `knowledgeBase$article`, `problem`).

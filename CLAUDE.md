@@ -83,8 +83,9 @@ npx ctx7 skills search "Pgvector"        # типы индексов (HNSW/IVFFl
 | `/sa`   | SA  | subagent (Sonnet) | `content/00-project/adr/`, `content/40-architecture/` |
 | `/dev`  | Dev | subagent (Sonnet) | `src/`, `content/60-implementation/` |
 | `/devops` | DevOps | subagent (Sonnet) | `content/70-operations/` |
+| `/itsm` | ITSM-аналитик (консультант) | subagent (Sonnet) | `content/10-domain/itsm-reviews/` или inline-review (НЕ пишет в `30-requirements/` / `40-architecture/` / ADR) |
 
-Полная матрица ролей и контракт вызова субагентов — в [AGENTS.md](AGENTS.md). Канонический поток: **Researcher (опц.) → BA → SA → Dev → DevOps**.
+Полная матрица ролей и контракт вызова субагентов — в [AGENTS.md](AGENTS.md). Канонический поток: **Researcher (опц.) → BA → SA → Dev → DevOps**. ITSM-аналитик — опциональный консультант, вызывается на любом этапе по триггерам ITSM-терминологии.
 
 ## Подключённые плагины
 
@@ -106,6 +107,7 @@ npx ctx7 skills search "Pgvector"        # типы индексов (HNSW/IVFFl
 | Перед claim'ом «готово» | `superpowers:verification-before-completion` |
 | Groovy-скрипт SMP (utils/api/HQL) | `naumen-smp-scripting` |
 | Адаптация текста под инфостиль | `infoinstyle` |
+| ITSM-вопрос: incident/problem/KB/SLA/RCA, выбор AI-сигналов оператора | `/itsm` (консультант, не заменяет BA/SA) |
 
 ## Ветвление
 

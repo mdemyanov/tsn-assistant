@@ -1,13 +1,28 @@
 ---
 order: 10
-title: "UC1 — Векторизация SMP-объектов джобой по расписанию"
+title: "UC1 — Векторизация SMP-объектов джобой по расписанию [SUPERSEDED]"
 properties:
   - Тип контента: Требование
   - Фаза: PoC
-  - Статус: Draft
+  - Статус: Superseded
 ---
 
 # UC1 — Векторизация SMP-объектов джобой по расписанию
+
+<note type="warning">
+
+**Статус: Superseded (split)**
+
+Этот UC разделён на два самостоятельных требования в волне BA-002:
+
+- **UC-V1** (`content/30-requirements/functional/uc-v1-vectorize-attributes.md`) — векторизация атрибутных полей объекта. Supersedes UC1 полностью.
+- **UC-V2** (`content/30-requirements/functional/uc-v2-vectorize-comments.md`) — векторизация комментариев (новый payload-класс).
+
+**Трассируемость AC:** UC1.AC-001..014 → UC-V1.AC-001..016.
+
+Этот файл сохранён только для ретроспективного контекста. Актуальные требования — в UC-V1 и UC-V2.
+
+</note>
 
 ## JTBD
 

@@ -22,6 +22,25 @@
 - **superpowers@claude-plugins-official** — `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, и др.
 - **project@local** — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы (`infoinstyle`, `correspondence-2`)
 
+## Структура плагинной системы
+
+Шаблон поставляет три файла, которые делают `project@local` работающим сразу после клона:
+
+| Файл | Назначение |
+|------|------------|
+| `.claude-plugin/marketplace.json` | Декларирует локальный marketplace `local` и плагин `project` (source — `./.claude/plugins/project`) |
+| `.claude/settings.json` | Регистрирует marketplace'ы (`ai-assistants`, `claude-plugins-official`, `local`) и включает три плагина |
+| `.claude/plugins/project/` | Сам локальный плагин: агенты `agents/`, команды `commands/`, скиллы `skills/` |
+
+Локальный marketplace использует `"path": "."` — относительный путь от `settings.json`. После клона шаблона **ничего править не нужно**: путь резолвится автоматически.
+
+Имя плагина — `project` (нейтральное, без отсылки к «template»). В большинстве проектов оставляют как есть. Если по какой-то причине нужно переименовать:
+
+1. Переименуй `.claude/plugins/project/` → `.claude/plugins/<new-name>/`.
+2. В `.claude-plugin/marketplace.json` поменяй `plugins[0].name` и `plugins[0].source`.
+3. В `.claude/plugins/<new-name>/.claude-plugin/plugin.json` поменяй `name`.
+4. В `.claude/settings.json` поменяй ключ в `enabledPlugins`: `project@local` → `<new-name>@local`.
+
 ## Поток работы
 
 Канонический порядок новой фичи: **Researcher (опц.) → BA → SA → Dev → DevOps**. PM координирует, `/pm-review` валидирует перед merge в `public`.

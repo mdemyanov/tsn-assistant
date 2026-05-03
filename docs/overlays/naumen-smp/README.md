@@ -23,9 +23,9 @@ bash scripts/apply-overlay.sh --remove naumen-smp
 | `CLAUDE.md` | Блок «Стек Naumen SMP» + DDD-карта + дополнительные red-lines |
 | `content/.doc-root.yaml` | Property `Сценарий` (значения A-F — placeholder) |
 | `content/10-domain/glossary.md` | Базовые SMP-термины (заявка, обращение, услуга, ОО, SLA, ...) |
-| `.claude/plugins/project-template/agents/ba-agent.md` | JTBD-примеры в SMP-домене |
-| `.claude/plugins/project-template/agents/sa-agent.md` | DDD→SMP-маппинг, hexagonal architecture, ADR-trail check |
-| `.claude/plugins/project-template/agents/dev-agent.md` | Groovy reserved methods, MCP `call()` error handling, CodeNarc |
+| `.claude/plugins/project/agents/ba-agent.md` | JTBD-примеры в SMP-домене |
+| `.claude/plugins/project/agents/sa-agent.md` | DDD→SMP-маппинг, hexagonal architecture, ADR-trail check |
+| `.claude/plugins/project/agents/dev-agent.md` | Groovy reserved methods, MCP `call()` error handling, CodeNarc |
 
 Все вставки между маркерами `<!-- OVERLAY:naumen-smp:start -->` / `:end -->` (или `# OVERLAY:naumen-smp:start/end` в YAML).
 

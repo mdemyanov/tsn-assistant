@@ -50,7 +50,7 @@ Marketplaces и enabled-плагины описаны в `.claude/settings.json`
 
 ### Источники
 
-- CTO-скиллы (infoinstyle, correspondence-2): `/Users/mdemyanov/Documents/naumen-cto/.claude/skills/`. При обновлении: `cp -R <src> .claude/plugins/project-template/skills/<name>/`.
+- CTO-скиллы (infoinstyle, correspondence-2): `/Users/mdemyanov/Documents/naumen-cto/.claude/skills/`. При обновлении: `cp -R <src> .claude/plugins/project/skills/<name>/`.
 - Эталоны агентов: `/Users/mdemyanov/knowlage/sd-ai-assistant`, `/Users/mdemyanov/Devel/naumen-smp-mcp`.
 
 ### Тестирование

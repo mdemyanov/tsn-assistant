@@ -129,7 +129,7 @@ process_yaml_target() {
 # === Agent patches ===
 for role in ba sa dev; do
   patch="$OVERLAY_DIR/agent-patches/$role-smp-extension.md"
-  agent=".claude/plugins/project-template/agents/$role-agent.md"
+  agent=".claude/plugins/project/agents/$role-agent.md"
   [[ -f "$patch" ]] && [[ -f "$agent" ]] && process_md_target "$agent" "$patch"
 done
 

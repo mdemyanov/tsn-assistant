@@ -40,13 +40,13 @@ $GIT_TEST commit -q -m "test baseline"
 echo ""
 echo "==> T1: JSON files valid"
 assert "settings.json valid" "python3 -c 'import json; json.load(open(\".claude/settings.json\"))'"
-assert "plugin.json valid" "python3 -c 'import json; json.load(open(\".claude/plugins/project-template/.claude-plugin/plugin.json\"))'"
+assert "plugin.json valid" "python3 -c 'import json; json.load(open(\".claude/plugins/project/.claude-plugin/plugin.json\"))'"
 
 # ===== T2: agent frontmatter =====
 echo ""
 echo "==> T2: agent frontmatter complete"
 for agent in pm ba sa dev devops researcher; do
-  file=".claude/plugins/project-template/agents/${agent}-agent.md"
+  file=".claude/plugins/project/agents/${agent}-agent.md"
   count=$(head -10 "$file" | grep -cE '^(name|description|model):' || true)
   assert "$agent-agent.md has 3 frontmatter fields" "[ \"$count\" -eq 3 ]"
 done
@@ -55,7 +55,7 @@ done
 echo ""
 echo "==> T3: command files have description"
 for cmd in pm pm-review ba sa dev devops research; do
-  file=".claude/plugins/project-template/commands/${cmd}.md"
+  file=".claude/plugins/project/commands/${cmd}.md"
   assert "$cmd.md exists" "[ -f \"$file\" ]"
   assert "$cmd.md has description" "head -5 \"$file\" | grep -q '^description:'"
 done

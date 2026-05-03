@@ -11,6 +11,12 @@
         "source": "github",
         "repo": "anthropics/claude-plugins"
       }
+    },
+    "local": {
+      "source": {
+        "source": "directory",
+        "path": "."
+      }
     }
   },
   "enabledPlugins": {

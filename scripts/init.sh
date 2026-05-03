@@ -28,8 +28,8 @@ if [[ -z "$NAME" ]]; then
   exit 1
 fi
 
-if [[ ! "$NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
-  echo "ERROR: project name must match [A-Za-z0-9._-]+ (got: '$NAME')."
+if [[ ! "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9\ ._-]*$ ]]; then
+  echo "ERROR: project name must start with [A-Za-z0-9] and contain only [A-Za-z0-9 ._-] (got: '$NAME')."
   exit 1
 fi
 

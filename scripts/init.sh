@@ -33,14 +33,46 @@ if [[ ! "$NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
   exit 1
 fi
 
-# 4. Подстановка {{PROJECT_NAME}} в CLAUDE.md, AGENTS.md, README.md
+# 3.1. Дополнительные параметры для content/.doc-root.yaml
+NAME_UPPER="$(echo "$NAME" | tr '[:lower:]' '[:upper:]')"
+if [[ $# -ge 2 ]]; then
+  CODE="$2"
+else
+  read -r -p "Код каталога Gramax (PROJECT_CODE, например $NAME_UPPER): " CODE
+fi
+CODE="${CODE:-$NAME_UPPER}"
+
+if [[ $# -ge 3 ]]; then
+  DESCRIPTION="$3"
+else
+  read -r -p "Краткое описание каталога (PROJECT_DESCRIPTION): " DESCRIPTION
+fi
+DESCRIPTION="${DESCRIPTION:-Knowledge base for $NAME}"
+
+if [[ $# -ge 4 ]]; then
+  EDITOR_EMAIL="$4"
+else
+  read -r -p "Email редактора Gramax (EDITOR_EMAIL): " EDITOR_EMAIL
+fi
+EDITOR_EMAIL="${EDITOR_EMAIL:-editor@example.com}"
+
+# 4. Подстановка плейсхолдеров в CLAUDE.md, AGENTS.md, README.md, content/.doc-root.yaml
 # Используем portable sed (работает на macOS и Linux): sed -i.bak ... && rm *.bak
-for f in CLAUDE.md AGENTS.md README.md; do
-  if [[ -f "$f" ]] && grep -q '{{PROJECT_NAME}}' "$f"; then
-    sed -i.bak "s/{{PROJECT_NAME}}/$NAME/g" "$f"
-    rm -f "$f.bak"
-    echo "✓ replaced {{PROJECT_NAME}} in $f"
+replace_in_file() {
+  local file="$1" placeholder="$2" value="$3"
+  # экранируем разделитель | для безопасной подстановки email и описаний
+  if [[ -f "$file" ]] && grep -q "$placeholder" "$file"; then
+    sed -i.bak "s|$placeholder|$value|g" "$file"
+    rm -f "$file.bak"
+    echo "✓ replaced $placeholder in $file"
   fi
+}
+
+for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml; do
+  replace_in_file "$f" '{{PROJECT_NAME}}'        "$NAME"
+  replace_in_file "$f" '{{PROJECT_CODE}}'        "$CODE"
+  replace_in_file "$f" '{{PROJECT_DESCRIPTION}}' "$DESCRIPTION"
+  replace_in_file "$f" '{{EDITOR_EMAIL}}'        "$EDITOR_EMAIL"
 done
 
 # 5. Создать ветку private (если нет)

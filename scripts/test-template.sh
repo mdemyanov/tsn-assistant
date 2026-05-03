@@ -75,7 +75,7 @@ assert "glossary.md exists" "[ -f content/10-domain/glossary.md ]"
 # ===== T5: init.sh works =====
 echo ""
 echo "==> T5: init.sh substitutes PROJECT_NAME and creates branch"
-bash scripts/init.sh "test-project" >/dev/null
+bash scripts/init.sh "test-project" "TEST-PROJECT" "Test description" "test@example.com" >/dev/null
 assert "PROJECT_NAME replaced in CLAUDE.md" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
 assert "PROJECT_NAME replaced in AGENTS.md" "! grep -q '{{PROJECT_NAME}}' AGENTS.md"
 assert "test-project name appears" "grep -q 'test-project' CLAUDE.md"

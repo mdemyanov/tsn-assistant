@@ -1,66 +1,118 @@
 ---
-description: "Инициализация проекта из шаблона. Заполняет плейсхолдеры в CLAUDE.md, AGENTS.md, README.md, content/.doc-root.yaml. Создаёт ветку private. Пример: /init my-project"
+description: "Двухфазная инициализация проекта из шаблона. Фаза 1: bash-скрипт (плейсхолдеры, wipe .git, initial commit с трассировкой, опционально origin). Фаза 2: интервью по 6 темам с TODO-маркерами на пропусках. Пример: /init my-project"
 allowed-tools: Read, Edit, Write, Bash(git:*), Bash(bash scripts/init.sh:*), Bash(ls:*), Bash(grep:*)
 ---
 
-Ты выполняешь первичную инициализацию проекта, созданного из шаблона `project_template`.
+Ты выполняешь первичную инициализацию проекта, созданного из шаблона `project_template`. Работа делится на две фазы: bash-механика (`scripts/init.sh`) и интервью с правками content'а.
 
 ## Твоя задача
 
 Пользователь передал: `$ARGUMENTS`
 
-Цель — превратить «шаблон» в готовый рабочий проект: заполнить все плейсхолдеры, настроить Gramax-каталог, создать рабочую ветку.
+Цель — превратить «шаблон» в готовый рабочий проект:
+1. Заполнить плейсхолдеры (`{{PROJECT_NAME}}`, `{{PROJECT_CODE}}`, `{{PROJECT_DESCRIPTION}}`, `{{EDITOR_EMAIL}}`).
+2. Wipe `.git`, initial commit с трассировкой (`Template: <url>@<sha>`).
+3. Опционально установить новый `origin` (URL ≠ репозиторий шаблона).
+4. Заполнить или явно отметить TODO-маркерами project-specific секции в `CLAUDE.md`.
 
 ## Алгоритм
 
-1. **Проверь, что инициализация ещё не выполнена.** Прочитай [CLAUDE.md](CLAUDE.md) и поищи `{{PROJECT_NAME}}`. Если плейсхолдеров нет — проект уже инициализирован, сообщи пользователю и выйди.
+### Шаг 0. Идемпотентность
 
-2. **Собери параметры от пользователя** (если не переданы в `$ARGUMENTS`):
+1. Прочитай `CLAUDE.md`. Если там нет ни `{{PROJECT_NAME}}`, ни `TODO(/init)` — проект уже полностью инициализирован. Сообщи и выйди.
+2. Если есть `{{PROJECT_NAME}}` → переходи к **Фазе 1**.
+3. Если плейсхолдеров уже нет, но есть `<!-- TODO(/init): ... -->` → пропусти Фазу 1, переходи сразу к **Фазе 2** (дозаполнение).
+
+### Шаг 0.5. Подтверждение wipe (только если идём в Фазу 1)
+
+Покажи пользователю текущую историю git:
+
+```bash
+git log --oneline -10
+```
+
+Затем явно спроси в чате (это сообщение, а не bash-prompt):
+
+> «Это история шаблона. После init она будет удалена (wipe `.git` + initial commit с трассировкой). Продолжить? (yes/no)»
+
+Жди подтверждения. На отрицательный ответ или невнятный — остановись и предложи сначала сделать `git clone` шаблона второй копией как backup.
+
+### Фаза 1. Запуск механики
+
+1. **Собери параметры** (если не переданы в `$ARGUMENTS`, спроси по очереди):
    - `PROJECT_NAME` — человекочитаемое имя проекта (например, `SD AI Assistant`)
    - `PROJECT_CODE` — код каталога Gramax, UPPERCASE, без пробелов (например, `SD-AI-ASSISTANT`)
    - `PROJECT_DESCRIPTION` — короткое описание для шапки Gramax-каталога
    - `EDITOR_EMAIL` — email редактора Gramax (минимум один; добавить остальных можно потом руками)
+   - `GIT_REMOTE_URL` — URL нового origin. **Не должен** содержать `project-template` / `project_template`. Если у пользователя ещё нет URL — оставь пустым (init.sh пропустит origin и предупредит).
 
-3. **Запусти `scripts/init.sh`** — он умеет принимать аргументы:
+2. **Запусти `scripts/init.sh`:**
    ```bash
-   bash scripts/init.sh "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL"
+   bash scripts/init.sh "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
    ```
    Скрипт:
-   - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`
-   - создаст ветку `private` (если её нет)
-   - скопирует `.env.example` → `.env`
+   - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`;
+   - wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`;
+   - создаст ветку `private`;
+   - опционально `git remote add origin <url>`;
+   - скопирует `.env.example` → `.env`.
 
-4. **Верифицируй результат:**
-   - `grep -RE '{{(PROJECT_(NAME|CODE|DESCRIPTION)|EDITOR_EMAIL)}}' CLAUDE.md AGENTS.md README.md content/.doc-root.yaml` — должно быть пусто.
-   - Прочитай [content/.doc-root.yaml](content/.doc-root.yaml) и подтверди, что `code`, `title`, `description`, `editors` заполнены.
-   - Проверь, что текущая ветка `private` или есть возможность переключиться (`git branch -a`).
+3. **Верифицируй:**
+   - `grep -RE '{{(PROJECT_(NAME|CODE|DESCRIPTION)|EDITOR_EMAIL)}}' CLAUDE.md AGENTS.md README.md content/.doc-root.yaml` — пусто.
+   - `git log --oneline -1` — один initial commit, в сообщении есть `Template: `.
+   - `git remote -v` — либо origin задан, либо пусто.
+   - `git branch -a` — есть `main` и `private`.
 
-5. **Поясни пользователю**, что нужно ещё сделать вручную:
-   - При необходимости адаптировать набор `properties` в `content/.doc-root.yaml` под специфику проекта (Сценарии, Типы контента, Фазы, Статусы) — см. пример в `/Users/mdemyanov/knowlage/sd-ai-assistant/content/.doc-root.yaml`.
-   - Дополнить `editors:` в `content/.doc-root.yaml` остальными редакторами.
-   - Заполнить секреты в `.env`.
-   - (Опционально для SMP-проекта) `bash scripts/apply-overlay.sh naumen-smp`.
+### Фаза 2. Интервью по 6 темам
 
-## Контракт `.doc-root.yaml`
+Задавай вопросы **по одному**. Multiple-choice предпочтительнее. На каждый ответ — сразу `Edit` соответствующего блока в `CLAUDE.md`. На skip («не знаю / позже / пропустить») — оставь TODO-маркер как есть.
 
-Минимальный набор полей, которые обязаны быть заполнены **после** `/init`:
+| # | Тема | Вопрос (пример) | Куда пишем |
+|---|------|-----------------|------------|
+| 1 | Стек и язык | «Стек: [a] Python [b] Groovy/Maven [c] TypeScript/Node [d] KB-only без кода [e] другое» | `## Стек` |
+| 2 | Команды сборки и тестов | «Команды сборки/тестов? Например: `mvn test`, `pytest`, `npm test`. Если KB-only — `skip`.» | `## Команды сборки и проверки` |
+| 3 | Архитектурные правила | «Архитектурный стиль: [a] hexagonal/ports-adapters [b] layered/N-tier [c] нет правил [d] KB-only» | `## Архитектурные правила` |
+| 4 | Domain / тематика | «Опиши проект одним абзацем: что это, кому помогает, какую проблему решает.» | `## Контекст проекта` |
+| 5 | Project-specific red-lines | «Какие правила безопасности/процесса критичны именно для этого проекта поверх универсальных?» | `### Project-specific` под `## Красные линии` |
+| 6 | Ссылки | «URL платформенной документации, гайдов, API-доков (можно несколько; Enter — пропустить).» | `## Справочные пути` (заменить TODO-маркер) |
+
+После каждого ответа:
+- Содержательный ответ → `Edit`-tool заменяет конкретный `<!-- TODO(/init): ... -->` на блок (markdown с заголовком если нужно).
+- Skip → ничего не меняешь, маркер остаётся для последующего grep.
+
+### Шаг 6.5 (опц.): Адаптация properties в .doc-root.yaml
+
+Спроси: «Хочешь адаптировать `properties` (Тип контента / Фаза / Статус) под специфику проекта (добавить «Сценарий», «Интеграция» и т.п.)?»
+
+- «Нет» → оставь дефолт.
+- «Да» → спроси, какие значения добавить/заменить, обнови соответствующие блоки и `filterProperties` синхронно.
+- Skip → вставь `<!-- TODO(/init): адаптировать properties -->` в начало `content/.doc-root.yaml`.
+
+Референс по адаптации: `/Users/mdemyanov/knowlage/sd-ai-assistant/content/.doc-root.yaml`.
+
+### Шаг финал. Отчёт
+
+1. **Что сделано:**
+   - Какие файлы изменены (CLAUDE.md / .doc-root.yaml / ...).
+   - Git-стейт: `git log --oneline -1`, `git branch -a`, `git remote -v`.
+2. **Что осталось:** список TODO-маркеров через `grep -rn 'TODO(/init)' CLAUDE.md content/`. Если пусто — поздравь.
+3. **Следующий шаг:** `/pm decompose <твоя первая фича>`.
+
+## Anti-scope
+
+- НЕ вызывай `/sa`, `/ba`, `/research` — на этапе init у проекта нет input-артефактов; их вызов нарушит контракт.
+- НЕ делай commit правок Фазы 2 — пользователь решает сам (можно опционально предложить `commit-commands:commit` в конце как next step).
+- НЕ создавай удалённый репозиторий — пользователь делает это сам и передаёт URL.
+
+## Контракт `.doc-root.yaml` (для верификации)
+
+Минимальный набор полей, которые обязаны быть заполнены **после** Фазы 1:
 
 | Поле | Источник | Пример |
 |------|----------|--------|
 | `code` | `PROJECT_CODE` | `SD-AI-ASSISTANT` |
 | `title` | `PROJECT_NAME` | `SD AI Assistant` |
 | `description` | `PROJECT_DESCRIPTION` | `Knowledge base for AI Assistant for Service Desk` |
-| `style` | по умолчанию `blue-green` | — |
-| `language` / `supportedLanguages` | по умолчанию `ru` | — |
-| `syntax` | `XML` (фиксировано шаблоном) | — |
-| `properties` | стартовый набор: Тип контента, Фаза, Статус | адаптируется под проект |
-| `filterProperties` | `[Тип контента, Фаза, Статус]` | синхронизировать с `properties` |
-| `editors` | `EDITOR_EMAIL` (можно дополнить) | `qutask@gmail.com` |
+| `editors` | `EDITOR_EMAIL` (можно дополнить руками) | `qutask@gmail.com` |
 
-Если `properties` адаптируется (добавляются «Сценарий», «Интеграция» и т.п.) — обязательно обновить `filterProperties`, иначе фильтры в Gramax не появятся.
-
-## Формат ответа
-
-- Что сделано (файлы изменены, ветка создана).
-- Что осталось пользователю (TODO-список).
-- Команда для следующего шага: `/pm decompose <твоя первая фича>`.
+Если `properties` адаптируются (Шаг 6.5) — обязательно обновить `filterProperties` синхронно, иначе фильтры в Gramax не появятся.

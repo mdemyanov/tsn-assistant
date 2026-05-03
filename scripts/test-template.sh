@@ -97,6 +97,40 @@ assert "second apply produces no diff" "[ \"$DIFF_LINES\" = '0' ]"
 bash scripts/apply-overlay.sh --remove naumen-smp >/dev/null
 assert "marker removed from CLAUDE.md" "! grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
 
+# ===== T7: full init (wipe .git + initial commit) =====
+echo ""
+echo "==> T7: full init wipes .git and creates traceable initial commit"
+TMP2="$(mktemp -d)"
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP2/"
+cd "$TMP2"
+git init -q -b main
+git -c user.email=tpl@example.com -c user.name=tpl commit --allow-empty -q -m "tpl baseline"
+# Запуск init.sh БЕЗ INIT_SKIP_GIT_RESET — должен сделать wipe + initial commit
+bash scripts/init.sh "smoke" "SMOKE" "Smoke test" "smoke@example.com" >/dev/null
+COMMITS="$(git log --all --oneline | wc -l | tr -d ' ')"
+assert "exactly 1 commit after init" "[ \"$COMMITS\" = '1' ]"
+assert "commit message contains Template:" "git log -1 --format=%B | grep -q '^Template: '"
+assert "main branch exists" "git show-ref --verify --quiet refs/heads/main"
+assert "private branch exists" "git show-ref --verify --quiet refs/heads/private"
+assert "no origin remote (no URL passed)" "[ -z \"$(git remote)\" ]"
+assert "PROJECT_NAME replaced in CLAUDE.md (T7)" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
+
+# T7.b: URL-валидация — URL шаблона должен быть отвергнут
+TMP3="$(mktemp -d)"
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP3/"
+cd "$TMP3"
+git init -q -b main
+git -c user.email=tpl@example.com -c user.name=tpl commit --allow-empty -q -m "tpl baseline"
+set +e
+bash scripts/init.sh "evil" "EVIL" "x" "x@y.z" "https://gitlab.example.com/foo/project-template.git" >/dev/null 2>&1
+TPL_REJECT_RC=$?
+set -e
+assert "init rejects template URL (project-template.git)" "[ \"$TPL_REJECT_RC\" != '0' ]"
+
+# Cleanup T7 dirs (TMP cleanup ловит EXIT trap, но TMP2/TMP3 — отдельные)
+cd "$TMP"
+rm -rf "$TMP2" "$TMP3"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

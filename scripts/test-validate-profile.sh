@@ -66,6 +66,26 @@ assert "M1 exit 0 с manifest.yaml" "[ \"$RC\" = '0' ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP1B"
 
+# ===== M2: required fields =====
+echo ""
+echo "==> M2: manifest без обязательных полей"
+TMP2="$(mktemp -d)"
+mkdir -p "$TMP2/docs/overlays/profiles/incomplete"
+cat > "$TMP2/docs/overlays/profiles/incomplete/manifest.yaml" <<'YAML'
+name: incomplete
+description: missing fields
+YAML
+cd "$TMP2"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/incomplete 2>&1)
+RC=$?
+set -e
+assert "M2 exit 1 без обязательных полей" "[ \"$RC\" = '1' ]"
+assert "M2 упоминает schema_version" "echo \"$OUT\" | grep -q 'schema_version'"
+assert "M2 упоминает subagents" "echo \"$OUT\" | grep -q 'subagents'"
+cd "$REPO_ROOT"
+rm -rf "$TMP2"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

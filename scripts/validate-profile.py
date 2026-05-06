@@ -35,6 +35,44 @@ def check_m1_manifest_present(profile_dir: Path) -> list[Issue]:
     return []
 
 
+REQUIRED_FIELDS = [
+    "schema_version",
+    "name",
+    "description",
+    "status",
+    "subagents",
+    "pipelines",
+    "content_scaffold",
+    "doc_root",
+    "operations",
+    "compatible_stacks",
+]
+
+
+def load_manifest(profile_dir: Path) -> dict | None:
+    """Возвращает распарсенный manifest или None."""
+    manifest_path = profile_dir / "manifest.yaml"
+    if not manifest_path.exists():
+        return None
+    return parse_yaml_file(manifest_path)
+
+
+def check_m2_required_fields(profile_dir: Path, manifest: dict | None) -> list[Issue]:
+    """M2: обязательные поля присутствуют."""
+    if manifest is None:
+        return []  # M1 уже сообщил
+    issues = []
+    manifest_path = profile_dir / "manifest.yaml"
+    for field in REQUIRED_FIELDS:
+        if field not in manifest:
+            issues.append(Issue(
+                level="error",
+                path=str(manifest_path),
+                message=f"required field missing: {field}",
+            ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -61,7 +99,12 @@ def main(argv: list[str]) -> int:
 
     issues: list[Issue] = []
     for pd in profile_dirs:
-        issues.extend(check_m1_manifest_present(pd))
+        m1 = check_m1_manifest_present(pd)
+        issues.extend(m1)
+        if m1:
+            continue  # без manifest нечего проверять
+        manifest = load_manifest(pd)
+        issues.extend(check_m2_required_fields(pd, manifest))
 
     if issues:
         print(format_issues(issues))

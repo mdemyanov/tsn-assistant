@@ -113,6 +113,44 @@ assert "M3 сообщение про name" "echo \"$OUT\" | grep -qE 'name.*foo|
 cd "$REPO_ROOT"
 rm -rf "$TMP3"
 
+# ===== M4: subagents объявлены в AGENTS.md =====
+echo ""
+echo "==> M4: subagents с unknown role"
+TMP4="$(mktemp -d)"
+mkdir -p "$TMP4/docs/overlays/profiles/badrole"
+# Минимальный AGENTS.md с реестром
+cat > "$TMP4/AGENTS.md" <<'MD'
+## Каталог ролей
+
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+| ba | BA |
+MD
+cat > "$TMP4/docs/overlays/profiles/badrole/manifest.yaml" <<'YAML'
+schema_version: 1
+name: badrole
+description: ref to non-existent role
+status: stub
+subagents:
+  pm: core
+  unknownrole: optional
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP4"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badrole 2>&1)
+RC=$?
+set -e
+assert "M4 exit 1 при unknown role" "[ \"$RC\" = '1' ]"
+assert "M4 сообщение содержит unknownrole" "echo \"$OUT\" | grep -q 'unknownrole'"
+cd "$REPO_ROOT"
+rm -rf "$TMP4"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

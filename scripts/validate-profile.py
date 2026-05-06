@@ -7,6 +7,7 @@ Exit codes: 0 — clean; 1 — есть errors; 2 — pyyaml не установ
 from __future__ import annotations
 
 import argparse
+import re as _re
 import sys
 from pathlib import Path
 
@@ -87,6 +88,47 @@ def check_m3_name_matches_dir(profile_dir: Path, manifest: dict) -> list[Issue]:
     return []
 
 
+def collect_known_roles(repo_root: Path) -> set[str]:
+    """Парсит AGENTS.md таблицу 'Каталог ролей', возвращает множество role names."""
+    agents_md = repo_root / "AGENTS.md"
+    if not agents_md.exists():
+        return set()
+    text = agents_md.read_text(encoding="utf-8")
+    # Найти секцию '## Каталог ролей' и таблицу под ней
+    match = _re.search(r"##\s*Каталог ролей\s*\n(.*?)(?=\n##|\Z)", text, _re.DOTALL)
+    if not match:
+        return set()
+    table = match.group(1)
+    roles = set()
+    for line in table.splitlines():
+        line = line.strip()
+        if not line.startswith("|") or "---" in line or not line.endswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if not cells or cells[0].lower() in ("имя", "name"):
+            continue
+        roles.add(cells[0])
+    return roles
+
+
+def check_m4_subagent_names(profile_dir: Path, manifest: dict, known_roles: set[str]) -> list[Issue]:
+    """M4: имена ролей в subagents объявлены в AGENTS.md."""
+    if not known_roles:
+        return []  # AGENTS.md отсутствует или без таблицы — M4 пропускаем
+    subagents = manifest.get("subagents") or {}
+    if not isinstance(subagents, dict):
+        return []
+    issues = []
+    for role in subagents:
+        if role not in known_roles:
+            issues.append(Issue(
+                level="error",
+                path=str(profile_dir / "manifest.yaml"),
+                message=f"роль '{role}' не объявлена в AGENTS.md (Каталог ролей)",
+            ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -111,6 +153,9 @@ def main(argv: list[str]) -> int:
         print(f"{PROFILES_ROOT_DEFAULT}/: OK (профилей нет — нечего валидировать)")
         return 0
 
+    repo_root = Path.cwd()  # запуск из корня репо
+    known_roles = collect_known_roles(repo_root)
+
     issues: list[Issue] = []
     for pd in profile_dirs:
         m1 = check_m1_manifest_present(pd)
@@ -121,6 +166,7 @@ def main(argv: list[str]) -> int:
         issues.extend(check_m2_required_fields(pd, manifest))
         if manifest is not None:
             issues.extend(check_m3_name_matches_dir(pd, manifest))
+            issues.extend(check_m4_subagent_names(pd, manifest, known_roles))
 
     if issues:
         print(format_issues(issues))

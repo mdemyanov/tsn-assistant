@@ -14,6 +14,12 @@
 > **Без Claude Code:** `bash scripts/init.sh "<имя>" "<код>" "<описание>" "<email>" "<git-url>"` даст фазу 1; фазу 2 (интервью) тогда придётся пройти руками.
 > **Backup до init:** склонируй шаблон второй копией заранее, если хочется иметь возможность сравнить с оригиналом — wipe удаляет историю шаблона.
 
+### Полезные команды (Wave 2 — профильная система)
+
+- `bash scripts/init.sh --profile project "Project Name" "PROJ" "desc" "user@x.com"` — init с явным профилем (Wave 2)
+- `python3 scripts/validate-profile.py` — валидация manifest'ов профилей
+- `bash scripts/apply-overlay.sh --profile --dry-run kb-team` — preview профильных операций
+
 ## Что внутри
 
 | Что | Где | Кто использует |

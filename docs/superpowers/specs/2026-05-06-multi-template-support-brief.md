@@ -2,7 +2,9 @@
 
 **Дата:** 2026-05-06
 **Автор:** PM (main, Opus)
-**Статус:** Brief — input для волны 2 (Researcher → BA → SA → Dev → DevOps).
+**Статус:** Brief v1.1 — input для волны 2 (Researcher → BA → SA → Dev → DevOps).
+
+**Изменения v1.1 (2026-05-06):** добавлен скоуп §10 — расширенный каталог subagents (Tester / AT / DevSecOps / Secure Compliance / Tech Writer) и workflow-pipelines (project planning / scrum-agile / критический путь / приёмка аналитика). Эти элементы — часть профильного контракта и входят в Wave 2.
 
 > Этот документ — НЕ финальный design. Он формулирует задачу, фиксирует первичный анализ и предлагает последовательность работы. Финальные решения принимаются на этапах Researcher / BA / SA с явными ADR.
 
@@ -219,3 +221,112 @@
 ---
 
 **Next step:** owner ревьюит этот brief, отвечает на вопросы из §9, после чего PM запускает Wave 2.0 (sync) → Wave 2.1 (`/research`).
+
+---
+
+## 10. Scope extension — расширенный subagent-set + workflow-pipelines
+
+**Контекст:** при ревью v1 owner указал, что шаблон проекта зависит ещё и от:
+- расширенного списка subagents (есть роли вне текущей шестёрки PM/Researcher/BA/SA/Dev/DevOps);
+- workflow-pipelines (методики работы — agile-планирование, критический путь, приёмка), которые не сводятся к ролям.
+
+Эти артефакты — **профильно-зависимые**: разные профили активируют разные subagent-наборы и разные pipelines. Поэтому они входят в Wave 2 как часть профильного контракта.
+
+### 10.1. Расширенный каталог subagents (предложение для каталога ролей)
+
+| Роль | Назначение | Триггер активации | Где исполняется (пред.) | Когда нужен |
+|------|-----------|-------------------|--------------------------|-------------|
+| **PM** | Координация, декомпозиция, ревью | Всегда | main (Opus) | Все профили |
+| **Researcher** | Сбор контекста, аналитика | Опц. перед BA | subagent (Sonnet) | Все профили (опц.) |
+| **BA** | Требования, JTBD, AC | Перед SA | subagent (Sonnet) | project, product, kb-product |
+| **SA** | Архитектура, ADR, API | Перед Dev | subagent (Sonnet) | project, product |
+| **Dev** | TDD-реализация по SA | После SA | subagent (Sonnet) | project, product |
+| **DevOps** | Deploy, runbook, monitor | После Dev (опц.) | subagent (Sonnet) | project, product, kb-team |
+| **🆕 Tester (QA-runner)** | Прогон тестов, регрессии, проверка прохождения после Dev | После Dev | subagent (Sonnet) | project, product |
+| **🆕 AT (Automation Test author)** | Написание автотестов **до** старта разработки (TDD-партнёр для Dev: пишет AC-driven test suite) | После BA/SA, перед Dev | subagent (Sonnet) | project, product (если автотесты есть) |
+| **🆕 DevSecOps** | Безопасная разработка: SAST/DAST guardrails, secrets-policy, supply-chain | Опц., по запросу user/PM | subagent (Sonnet) | project, product (опц.) |
+| **🆕 Secure Compliance** | Исследование и проверка соответствия требованиям ИБ (152-ФЗ, ISO27001, internal compliance) | Опц., по запросу user/PM | subagent (Sonnet) | project, product, kb-product (опц.) |
+| **🆕 Technical Writer** | Документирование на «понятный язык» (для внешних читателей, customer-facing docs, gramax-публикации) | После SA/Dev (если нужна внешняя дока) | subagent (Sonnet) | kb-product, project (опц.), product |
+
+**Принципы:**
+
+- **Core vs opt-in:** в манифесте профиля каждый subagent помечен как `enabled: true` (всегда вызывается в pipeline) / `enabled: optional` (вызывается только если явный триггер от user/PM). DevSecOps и Secure Compliance в дефолте — `optional`.
+- **Профиль декларирует subagent-set,** но user/PM может ad-hoc включить дополнительный (например, для project включить Secure Compliance, если проект под compliance-надзором).
+- **Контракт вызова субагента (из AGENTS.md)** одинаковый для всех ролей: цель + входные файлы + ожидаемый артефакт + критерии приёмки.
+
+### 10.2. Каталог workflow-pipelines (методик работы)
+
+В отличие от subagents (роли), pipelines — это **способ организации работы**: сценарии последовательностей вызовов и связанных артефактов.
+
+| Pipeline | Назначение | Артефакты | Где живёт | Профильность |
+|----------|-----------|-----------|-----------|--------------|
+| **🆕 Планирование реализации проекта** | Декомпозиция эпика на задачи + оценка + приоритеты + roadmap | `content/00-project/roadmap.md`, `content/00-project/plan-<epic>.md` | PM / `/pm decompose` | project, product |
+| **🆕 Scrum / Agile-планирование** | Спринт-планирование, daily, retro; backlog grooming | `content/00-project/sprints/<NNN>-sprint.md`, retros | PM (новый раздел), opt-in | project (опц.), product (опц.) |
+| **🆕 Подсчёт критического пути** | Анализ зависимостей задач, выявление blocking chain, оценка длительности | `content/00-project/critical-path.md` (опц. mermaid Gantt) | PM / `/pm critical-path` | project (опц., для крупных) |
+| **🆕 Приёмка реализации задачи аналитиком** | BA проверяет, что реализованная Dev-фича соответствует AC из требования; формальный gate перед merge | `content/30-requirements/<req>.md` секция «Acceptance log», или отдельный `content/30-requirements/acceptance/<req>.md` | `/ba accept <req>` (новый под-режим BA) | project, product |
+
+**Принципы:**
+
+- Pipelines — **орт-к subagents**: один pipeline может вовлекать несколько subagents (например, scrum-планирование = PM + BA + SA + Dev в координированной последовательности).
+- Pipelines описаны в **AGENTS.md / CLAUDE.md** как «когда какой запускать», и в slash-командах (`/pm critical-path`, `/ba accept`).
+- Профильная активация — какие pipelines в профиле дефолтные / опциональные / отсутствуют.
+- Pipelines могут быть **stack-ориентированными** (scrum/kanban — выбор стиля), и попадают в overlay-механизм аналогично stack-overlay'ам.
+
+### 10.3. Влияние на §3 (карта профилей) — обновлённая гипотеза
+
+| Профиль | Subagents (core / optional) | Pipelines (default / opt-in) |
+|---------|------------------------------|------------------------------|
+| `project` | core: PM, BA, SA, Dev, DevOps, Tester, AT, Tech Writer; opt: Researcher, DevSecOps, Secure Compliance | default: project-planning, BA-acceptance; opt-in: scrum-agile, critical-path |
+| `product` | core: PM, BA, SA, Dev, DevOps, Tester, Tech Writer; opt: Researcher, AT, DevSecOps, Secure Compliance | default: project-planning, BA-acceptance; opt-in: scrum-agile |
+| `kb-product` | core: PM, Tech Writer; opt: Researcher, BA (как редактор), Secure Compliance | default: review-cycle (PM-review); opt-in: — |
+| `kb-team` | core: PM, DevOps, Tech Writer; opt: Researcher | default: runbook-cycle, onboarding-flow; opt-in: — |
+| `custom` / `minimal` | core: PM; opt: всё остальное | default: — (всё opt-in); opt-in: — |
+
+(Это **расширение гипотезы из §3**, а не замена. Финал на BA-этапе.)
+
+### 10.4. Новые открытые вопросы (расширяют §5)
+
+11. **Кто авторитет subagent-каталога?** Список ролей живёт в одном месте (например, `AGENTS.md` базового шаблона) или в манифесте профиля? Куда добавлять 6-ю/7-ю роль, если кто-то её введёт?
+12. **Subagent-prompt'ы:** общая база с профильными overrides, или отдельный prompt-файл на каждое сочетание (профиль × роль)? Сейчас prompts в `agents/<role>-agent.md` — расширять/дублировать?
+13. **Activation-триггер.** «Optional» subagent активируется командой пользователя (`/secsompliance ...`) или PM решает в декомпозиции? Если PM — нужны критерии (например, project под compliance-флагом → Secure Compliance активен).
+14. **Pipeline ↔ Subagent.** Pipeline = последовательность slash-команд, или у pipeline свой «оркестратор-агент» (типа `/pm scrum-plan` который сам вызывает других)? Рекомендуется второе — pipeline = специальный режим PM-агента.
+15. **AT vs Tester.** Как разделить ответственность? AT пишет тесты по AC ДО Dev (red-test for TDD); Tester прогоняет полный suite и регрессии ПОСЛЕ Dev. Должны быть разными ролями или это один subagent в двух режимах?
+16. **Tech Writer и Gramax.** Tech Writer = вторичный редактор после Dev/SA, или primary author для kb-product/kb-team профилей? В каких профилях он core, в каких — optional?
+17. **DevSecOps vs Secure Compliance.** DevSecOps = эмбеддед в pipeline (постоянно гонят SAST), а Secure Compliance = разовая проверка / аудит на конкретные требования ИБ. Это две разные роли (как сейчас) или одна с двумя режимами?
+18. **Storage:** где жить артефактам новых ролей? Tester → `content/60-implementation/test-reports/<...>.md`? AT → `content/40-architecture/test-design.md`? Tech Writer → отдельная подпапка или интегрирован в существующие? Pipelines → `content/00-project/<pipeline>/...`?
+
+### 10.5. Расширение последовательности §6 — Wave 2 теперь покрывает и subagents+pipelines
+
+- **Wave 2.1 Research** — добавляется аудит того, как другие AI-команды организуют расширенные subagent-наборы (`agentscope`, `crewAI`, `Microsoft AutoGen`, `LangGraph multi-agent`). Какие роли каноничны, какие redundant?
+- **Wave 2.2 BA** — для **каждого** из 11 subagents и **каждого** из 4+ pipelines: JTBD, входы, выходы, критерии приёмки артефакта. Это существенно больше работы, чем казалось в v1.
+- **Wave 2.3 SA** — нужна **сетка** «профиль × роль × pipeline» в декларативном формате (manifest schema). Возможно: ADR «архитектура манифеста профиля» включает разделы:
+  - `subagents:` map (role → enabled/optional)
+  - `pipelines:` map (pipeline → enabled/optional)
+  - `content_scaffold:` (что copy-pastа в content/)
+  - `properties:` (для .doc-root.yaml)
+- **Wave 2.4 Plan + Dev** — масштаб расширяется. Минимальный Wave 2: 2 профиля × 11 subagents × 4 pipelines = 88 матричных ячеек, из которых половина «not applicable». Реалистично за один wave: framework + базовый набор (5-6 subagents + 2 pipelines), остальное — wave 3-4.
+- **Wave 2.5 DevOps** — `test-template.sh` теперь должен матрицу и subagent-prompts (не сломали ли при override).
+
+### 10.6. Расширение §8 acceptance
+
+Добавляется к acceptance Wave 2:
+
+- [ ] Манифест профиля декларирует не только scaffold + properties, но и subagent-set + pipeline-set.
+- [ ] Минимум 5 новых subagent-prompt'ов в `agents/`: `tester-agent.md`, `at-agent.md`, `tech-writer-agent.md`, плюс `devsecops-agent.md` и `secure-compliance-agent.md` (последние два — в режиме «opt-in stub»).
+- [ ] Минимум 2 новых pipeline-режимов в `commands/pm.md` или новых slash-commands: `/pm plan-implementation`, `/ba accept`. Остальные (scrum, critical-path) — в backlog Wave 3.
+- [ ] AGENTS.md обновлён: каталог ролей расширен, контракт вызова единый, матрица «роль × профиль» отражает реальность.
+- [ ] Документация: «как добавить новую роль / pipeline» в гайд по созданию профиля.
+
+### 10.7. Дополнительные риски (расширяют §7)
+
+- **Раздувание каталога** — 11 ролей сложнее в поддержке, чем 6. Митигация: **в Wave 2 поставить 5 новых ролей в виде prompt-stubs** (минимальный prompt по контракту), полировать в боевом использовании.
+- **Конфликт оркестрации** — больше ролей = больше комбинаций вызова. Митигация: PM по-прежнему orchestrator; novelty в pipelines = explicit slash-команды (`/pm scrum-plan`), а не неявные хуки.
+- **Drift с реальной практикой пользователя** — если owner де-факто не использует AT (а только Tester), вторая роль будет мёртвой. Митигация: на Wave 2.0 (sync) явно подтвердить, какие из 5 новых ролей **реально нужны прямо сейчас**, какие в задел.
+
+### 10.8. Дополнительные вопросы для §9 (owner-input для Wave 2.0)
+
+6. **Из 5 новых subagents, какие точно нужны в Wave 2** (минимум 2-3), какие — в Wave 3? Рекомендация: Tester + Tech Writer (универсальные); остальные — wave 3 как stubs.
+7. **Из 4 новых pipelines, какие в Wave 2**? Рекомендация: project-planning + BA-acceptance (базовые); scrum/critical-path — в задел.
+8. **Активация opt-in subagents** — как ты ожидаешь их вызывать? Пример: «PM в декомпозиции включает DevSecOps» vs «User говорит /devsecops audit». Или оба варианта?
+9. **AT-prompts** — у тебя есть наработки/предпочтения по тому, как AT должен описывать тесты (BDD-сценарии? gherkin? plain pytest?), или это open для решения SA?
+10. **Compliance scope** — Secure Compliance нужен под конкретные требования (152-ФЗ, ISO27001, корпоративные) или общий? От ответа зависит, нужна ли база доменных правил или general-purpose research-агент.

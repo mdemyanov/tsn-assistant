@@ -143,6 +143,21 @@ assert "init rejects template URL (project-template.git)" "[ \"$TPL_REJECT_RC\" 
 cd "$TMP"
 rm -rf "$TMP2" "$TMP3"
 
+# ===== T-DRYRUN: --dry-run для markers-flow =====
+echo ""
+echo "==> T-DRYRUN: --dry-run для markers-flow"
+TMP_DRY=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_DRY/"
+cd "$TMP_DRY"
+set +e
+OUT=$(bash scripts/apply-overlay.sh --dry-run naumen-smp 2>&1)
+RC=$?
+set -e
+assert "T-DRYRUN: exit 0" "[ \"$RC\" = '0' ]"
+assert "T-DRYRUN: prints DRY-RUN" "echo \"$OUT\" | grep -q 'DRY-RUN'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_DRY"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

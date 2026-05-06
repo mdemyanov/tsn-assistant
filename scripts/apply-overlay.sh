@@ -10,26 +10,50 @@ set -euo pipefail
 
 ACTION="apply"
 OVERLAY_NAME=""
+DRY_RUN=0
+PROFILE_MODE=0
+FORCE=0
+INIT_MODE=0
 
 if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--remove] <overlay-name>"
+  echo "Usage: $0 [--profile] [--force] [--dry-run] [--init] [--remove] <overlay-name>"
   exit 2
 fi
 
-if [[ "$1" == "--remove" ]]; then
-  ACTION="remove"
-  shift
-  if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 --remove <overlay-name>"
-    exit 2
-  fi
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --remove)  ACTION="remove"; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --profile) PROFILE_MODE=1; shift ;;
+    --force)   FORCE=1; shift ;;
+    --init)    INIT_MODE=1; shift ;;
+    -h|--help)
+      cat <<EOF
+Usage: $0 [--profile] [--force] [--dry-run] [--init] [--remove] <overlay-name>
 
-OVERLAY_NAME="$1"
-shift
+  --profile     Apply profile-overlay from docs/overlays/profiles/<name>/
+                (uses manifest.yaml operations: add/replace/delete)
+  --force       Disable strict delete-non-empty check
+  --dry-run     Print plan without executing
+  --init        Skip strict checks (called from init.sh on fresh template)
+  --remove      Remove the marker-based overlay (rolls back the apply)
+EOF
+      exit 0
+      ;;
+    -*) echo "Unknown flag: $1" >&2; exit 1 ;;
+    *)
+      if [[ -n "$OVERLAY_NAME" ]]; then
+        echo "ERROR: unexpected positional arg: $1" >&2
+        exit 2
+      fi
+      OVERLAY_NAME="$1"
+      shift
+      ;;
+  esac
+done
 
-if [[ $# -gt 0 ]]; then
-  echo "ERROR: unexpected arguments: $*"
+if [[ -z "$OVERLAY_NAME" ]]; then
+  echo "ERROR: overlay name required" >&2
   exit 2
 fi
 
@@ -53,6 +77,10 @@ strip_block() {
   local start="$2"
   local end="$3"
   if [[ ! -f "$file" ]]; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[DRY-RUN] would modify: $file"
     return 0
   fi
   awk -v s="$start" -v e="$end" '
@@ -81,6 +109,10 @@ append_block_md() {
   if [[ ! -f "$file" ]] || [[ ! -f "$content_file" ]]; then
     return 0
   fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[DRY-RUN] would append: $file"
+    return 0
+  fi
   {
     echo ""
     echo "$MARK_START_MD"
@@ -93,6 +125,10 @@ append_block_yaml() {
   local file="$1"
   local content_file="$2"
   if [[ ! -f "$file" ]] || [[ ! -f "$content_file" ]]; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[DRY-RUN] would append: $file"
     return 0
   fi
   {
@@ -122,6 +158,10 @@ process_yaml_target() {
     append_block_yaml "$target" "$patch"
   fi
 }
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "DRY-RUN MODE — no changes will be made"
+fi
 
 # === CLAUDE.md ===
 [[ -f "$OVERLAY_DIR/claude-md-patch.md" ]] && process_md_target "CLAUDE.md" "$OVERLAY_DIR/claude-md-patch.md"

@@ -70,6 +70,35 @@ def check_property_names(content_dir: Path, doc_root: dict) -> list[Issue]:
     return issues
 
 
+def check_property_values(content_dir: Path, doc_root: dict) -> list[Issue]:
+    """C5: значения property из frontmatter входят в values: (для type: Enum)."""
+    enums = {
+        p["name"]: set(p.get("values") or [])
+        for p in doc_root.get("properties", [])
+        if isinstance(p, dict) and p.get("type") == "Enum" and "name" in p
+    }
+    issues = []
+    for md_path in content_dir.rglob("*.md"):
+        if md_path.name == "_index.md":
+            continue
+        fm = parse_frontmatter(md_path)
+        if not fm or "properties" not in fm or not isinstance(fm["properties"], list):
+            continue
+        for p in fm["properties"]:
+            if not isinstance(p, dict) or "name" not in p or "value" not in p:
+                continue
+            name = p["name"]
+            if name not in enums:
+                continue
+            values = p["value"] if isinstance(p["value"], list) else [p["value"]]
+            for v in values:
+                if v not in enums[name]:
+                    allowed = sorted(enums[name])
+                    issues.append(Issue("error", str(md_path),
+                        f"property \"{name}\" имеет значение \"{v}\", не входящее в enum {allowed}"))
+    return issues
+
+
 def check_index_no_properties(content_dir: Path) -> list[Issue]:
     """C2: _index.md не должен содержать properties:."""
     issues = []
@@ -150,6 +179,7 @@ def main(argv: list[str]) -> int:
     issues.extend(check_object_notation(content_dir))
     doc_root = load_doc_root(content_dir)
     issues.extend(check_property_names(content_dir, doc_root))
+    issues.extend(check_property_values(content_dir, doc_root))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

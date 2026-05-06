@@ -252,6 +252,43 @@ assert "C4 exit 1 для незнакомого property" "[ \"$RC\" = '1' ]"
 assert "C4 в сообщении упомянут \"Неизвестный\"" "echo \"$OUT\" | grep -q 'Неизвестный'"
 rm -rf "$TMP_C4"
 
+# ===== C5: значение property входит в enum =====
+echo ""
+echo "==> C5: значение вне enum даёт error"
+TMP_C5="$(mktemp -d)"
+mkdir -p "$TMP_C5/content"
+cat > "$TMP_C5/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A, B]
+filterProperties: []
+YAML
+cat > "$TMP_C5/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C5/content/article.md" <<'MD'
+---
+order: 1
+title: X
+properties:
+  - name: Тип
+    value: [WRONG]
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C5/content" 2>&1)
+RC=$?
+set -e
+assert "C5 exit 1 значение вне enum" "[ \"$RC\" = '1' ]"
+assert "C5 сообщение содержит WRONG" "echo \"$OUT\" | grep -q 'WRONG'"
+rm -rf "$TMP_C5"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

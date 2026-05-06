@@ -289,6 +289,46 @@ assert "C5 exit 1 значение вне enum" "[ \"$RC\" = '1' ]"
 assert "C5 сообщение содержит WRONG" "echo \"$OUT\" | grep -q 'WRONG'"
 rm -rf "$TMP_C5"
 
+# ===== C6: filterProperties покрытие (warning) =====
+echo ""
+echo "==> C6: статья без filter-property — warning"
+TMP_C6="$(mktemp -d)"
+mkdir -p "$TMP_C6/content"
+cat > "$TMP_C6/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A]
+  - name: Статус
+    type: Enum
+    values: [Draft]
+filterProperties: [Тип]
+YAML
+cat > "$TMP_C6/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C6/content/article.md" <<'MD'
+---
+order: 1
+title: X
+properties:
+  - name: Статус
+    value: [Draft]
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C6/content" 2>&1)
+RC=$?
+set -e
+assert "C6 warning не валит exit code" "[ \"$RC\" = '0' ]"
+assert "C6 сообщение содержит warning + filterProperties" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -qi 'filter'"
+rm -rf "$TMP_C6"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

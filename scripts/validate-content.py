@@ -99,6 +99,28 @@ def check_property_values(content_dir: Path, doc_root: dict) -> list[Issue]:
     return issues
 
 
+def check_filter_coverage(content_dir: Path, doc_root: dict) -> list[Issue]:
+    """C6: статья объявляет хотя бы один property из filterProperties (warning)."""
+    filter_names = set(doc_root.get("filterProperties") or [])
+    if not filter_names:
+        return []
+    issues = []
+    for md_path in content_dir.rglob("*.md"):
+        if md_path.name == "_index.md":
+            continue
+        fm = parse_frontmatter(md_path)
+        if not fm:
+            continue
+        props = fm.get("properties") or []
+        if not isinstance(props, list):
+            continue
+        declared = {p["name"] for p in props if isinstance(p, dict) and "name" in p}
+        if not (declared & filter_names):
+            issues.append(Issue("warning", str(md_path),
+                f"не объявляет ни одного property из filterProperties {sorted(filter_names)} — фильтр в Gramax не сработает"))
+    return issues
+
+
 def check_index_no_properties(content_dir: Path) -> list[Issue]:
     """C2: _index.md не должен содержать properties:."""
     issues = []
@@ -180,6 +202,7 @@ def main(argv: list[str]) -> int:
     doc_root = load_doc_root(content_dir)
     issues.extend(check_property_names(content_dir, doc_root))
     issues.extend(check_property_values(content_dir, doc_root))
+    issues.extend(check_filter_coverage(content_dir, doc_root))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

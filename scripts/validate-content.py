@@ -39,6 +39,37 @@ def parse_frontmatter(file_path: Path) -> dict | None:
         return None
 
 
+def load_doc_root(content_dir: Path) -> dict:
+    """Читает content/.doc-root.yaml. Возвращает {} если нет/невалиден."""
+    path = content_dir / ".doc-root.yaml"
+    if not path.exists():
+        return {}
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError:
+        return {}
+
+
+def check_property_names(content_dir: Path, doc_root: dict) -> list[Issue]:
+    """C4: имена property в frontmatter объявлены в .doc-root.yaml."""
+    declared = {p["name"] for p in doc_root.get("properties", []) if isinstance(p, dict) and "name" in p}
+    issues = []
+    for md_path in content_dir.rglob("*.md"):
+        if md_path.name == "_index.md":
+            continue
+        fm = parse_frontmatter(md_path)
+        if not fm or "properties" not in fm or not isinstance(fm["properties"], list):
+            continue
+        for p in fm["properties"]:
+            if not isinstance(p, dict) or "name" not in p:
+                continue
+            name = p["name"]
+            if name not in declared:
+                issues.append(Issue("error", str(md_path),
+                    f"property \"{name}\" не объявлен в .doc-root.yaml"))
+    return issues
+
+
 def check_index_no_properties(content_dir: Path) -> list[Issue]:
     """C2: _index.md не должен содержать properties:."""
     issues = []
@@ -117,6 +148,8 @@ def main(argv: list[str]) -> int:
     issues.extend(check_indexes(content_dir))
     issues.extend(check_index_no_properties(content_dir))
     issues.extend(check_object_notation(content_dir))
+    doc_root = load_doc_root(content_dir)
+    issues.extend(check_property_names(content_dir, doc_root))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

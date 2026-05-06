@@ -215,6 +215,43 @@ set -e
 assert "C3 object-нотация exit 0" "[ \"$RC\" = '0' ]"
 rm -rf "$TMP_C3B"
 
+# ===== C4: property из frontmatter объявлен в .doc-root.yaml =====
+echo ""
+echo "==> C4: незнакомый property даёт error"
+TMP_C4="$(mktemp -d)"
+mkdir -p "$TMP_C4/content"
+cat > "$TMP_C4/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A]
+filterProperties: []
+YAML
+cat > "$TMP_C4/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C4/content/article.md" <<'MD'
+---
+order: 1
+title: A
+properties:
+  - name: Неизвестный
+    value: [X]
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C4/content" 2>&1)
+RC=$?
+set -e
+assert "C4 exit 1 для незнакомого property" "[ \"$RC\" = '1' ]"
+assert "C4 в сообщении упомянут \"Неизвестный\"" "echo \"$OUT\" | grep -q 'Неизвестный'"
+rm -rf "$TMP_C4"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

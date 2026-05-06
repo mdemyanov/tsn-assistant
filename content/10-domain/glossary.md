@@ -1,9 +1,13 @@
 ---
+order: 1
 title: Глоссарий
 properties:
-  Тип контента: Глоссарий
-  Фаза: MVP
-  Статус: Draft
+  - name: Тип контента
+    value: [Глоссарий]
+  - name: Фаза
+    value: [MVP]
+  - name: Статус
+    value: [Draft]
 ---
 
 # Глоссарий

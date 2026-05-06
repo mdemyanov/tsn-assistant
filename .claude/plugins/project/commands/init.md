@@ -62,6 +62,7 @@ git log --oneline -10
    - `git log --oneline -1` — один initial commit, в сообщении есть `Template: `.
    - `git remote -v` — либо origin задан, либо пусто.
    - `git branch -a` — есть `main` и `private`.
+   - `python3 scripts/validate-content.py` — exit 0 (warnings допустимы; errors — блокер).
 
 ### Фаза 2. Интервью по 6 темам
 
@@ -88,7 +89,7 @@ git log --oneline -10
 - «Да» → спроси, какие значения добавить/заменить, обнови соответствующие блоки и `filterProperties` синхронно.
 - Skip → вставь `<!-- TODO(/init): адаптировать properties -->` в начало `content/.doc-root.yaml`.
 
-Референс по адаптации: `/Users/mdemyanov/knowlage/sd-ai-assistant/content/.doc-root.yaml`.
+Референс по адаптации (production-эталон): `/Users/mdemyanov/Devel/naumen-ecosystem/business-requirements/.doc-root.yaml`. Старый каталог `sd-ai-assistant` — НЕ использовать как референс схемы (легаси, плоская frontmatter-нотация).
 
 ### Шаг финал. Отчёт
 
@@ -103,6 +104,7 @@ git log --oneline -10
 - НЕ вызывай `/sa`, `/ba`, `/research` — на этапе init у проекта нет input-артефактов; их вызов нарушит контракт.
 - НЕ делай commit правок Фазы 2 — пользователь решает сам (можно опционально предложить `commit-commands:commit` в конце как next step).
 - НЕ создавай удалённый репозиторий — пользователь делает это сам и передаёт URL.
+- НЕ создавать `README.md` в `content/` — Gramax индексирует только `_index.md`.
 
 ## Контракт `.doc-root.yaml` (для верификации)
 

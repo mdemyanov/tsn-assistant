@@ -51,6 +51,16 @@ Marketplaces и enabled-плагины описаны в `.claude/settings.json`
 
 - `naumen-smp` — для проектов на платформе Naumen SMP. См. `docs/overlays/naumen-smp/README.md`.
 
+## Валидация
+
+Структуру каталога `content/` проверяет валидатор:
+
+```bash
+python3 scripts/validate-content.py
+```
+
+Требует `pyyaml` (`pip install pyyaml`). Запускается автоматически в `bash scripts/test-template.sh` и в slash-команде `/pm-review`.
+
 ## Для мейнтейнеров шаблона
 
 ### Источники

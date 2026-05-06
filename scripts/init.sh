@@ -110,42 +110,6 @@ if [[ -n "$PROFILE" ]]; then
   echo "Profile: $PROFILE"
 fi
 
-# 3.Y — T40: Динамические init_prompts из манифеста
-# (ответы собираем в PROMPT_ANSWERS_LOG для отладки; bash 3.2-совместимо)
-PROMPT_ANSWERS_LOG=""
-
-if [[ -n "$PROFILE" ]]; then
-  PROMPTS_COUNT=$(python3 -c "
-import yaml, sys
-try:
-    m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
-    print(len(m.get('init_prompts') or []))
-except Exception as e:
-    print(0, file=sys.stderr)
-    print(0)
-" 2>/dev/null)
-
-  if [[ "$PROMPTS_COUNT" -gt 0 ]]; then
-    echo "Профиль '$PROFILE' требует $PROMPTS_COUNT доп. вопросов:"
-    for i in $(seq 0 $((PROMPTS_COUNT - 1))); do
-      PROMPT_ID=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i]['id'])")
-      PROMPT_TEXT=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i]['prompt'])")
-      CHOICES=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); c=m['init_prompts'][$i].get('choices') or []; print(','.join(map(str,c)))")
-      DEFAULT=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i].get('default', ''))")
-
-      echo "  $PROMPT_TEXT"
-      [[ -n "$CHOICES" ]] && echo "  Варианты: $CHOICES"
-      if [[ ! -t 0 ]]; then
-        ANSWER="$DEFAULT"
-      else
-        read -r -p "  Ответ (default: $DEFAULT): " ANSWER
-        ANSWER="${ANSWER:-$DEFAULT}"
-      fi
-      PROMPT_ANSWERS_LOG+="$PROMPT_ID=$ANSWER;"
-    done
-  fi
-fi
-
 # 3.3. Защита от случайного push в репозиторий шаблона
 if [[ -n "$GIT_REMOTE_URL" ]]; then
   if [[ "$GIT_REMOTE_URL" =~ (project[-_]template)(\.git)?/?$ ]]; then

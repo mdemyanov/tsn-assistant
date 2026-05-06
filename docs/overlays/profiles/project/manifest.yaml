@@ -35,16 +35,5 @@ operations:
     target: content/.doc-root.yaml
     reason: "Профильная схема properties"
 
-init_prompts:
-  - id: compliance_domain
-    prompt: "Проект под compliance-надзором?"
-    type: enum
-    choices: [none, 152-fz, iso27001, other]
-    default: none
-    on_value:
-      152-fz: { subagents.compliance: core }
-      iso27001: { subagents.compliance: core }
-      other: { subagents.compliance: core }
-
 compatible_stacks: [naumen-smp]
 maintainer: project_template

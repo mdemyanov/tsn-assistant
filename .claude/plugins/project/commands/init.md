@@ -66,26 +66,6 @@ ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
 
 Сохрани выбор в переменную `$PROFILE`.
 
-### Шаг 0.8. Динамические init_prompts профиля
-
-После выбора профиля прочитай его манифест:
-
-```bash
-cat docs/overlays/profiles/$PROFILE/manifest.yaml
-```
-
-Если в манифесте есть `init_prompts:` — задай каждый вопрос пользователю по очереди:
-- Тип `enum` — покажи `choices`, default помечен; ответ должен быть из списка
-- Тип `string` — свободный текстовый ввод
-- Тип `bool` — y/n
-
-Сохрани ответы в `INIT_PROMPT_<id>` env-переменных. Они передадутся в `apply-overlay.sh` (через bash-init после T40), который применит `on_value` мутации к manifest in-memory.
-
-**Пример (для project профиля):**
-- `compliance_domain` (enum): «Проект под compliance-надзором?» — choices: `none`, `152-fz`, `iso27001`, `other`. Если ответ ≠ `none`, manifest добавит `subagents.compliance: core` (через on_value).
-
-Если `init_prompts: []` или отсутствует — пропусти этот шаг.
-
 ### Фаза 1. Запуск механики
 
 1. **Собери параметры** (если не переданы в `$ARGUMENTS`, спроси по очереди):
@@ -95,13 +75,12 @@ cat docs/overlays/profiles/$PROFILE/manifest.yaml
    - `EDITOR_EMAIL` — email редактора Gramax (минимум один; добавить остальных можно потом руками)
    - `GIT_REMOTE_URL` — URL нового origin. **Не должен** содержать `project-template` / `project_template`. Если у пользователя ещё нет URL — оставь пустым (init.sh пропустит origin и предупредит).
 
-2. **Запусти `scripts/init.sh`** (после T40 поддерживает `--profile` и dynamic init_prompts):
+2. **Запусти `scripts/init.sh`** (после T40 поддерживает `--profile`):
    ```bash
    bash scripts/init.sh --profile "$PROFILE" "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
    ```
    Скрипт:
    - читает `docs/overlays/profiles/$PROFILE/manifest.yaml`
-   - применяет `INIT_PROMPT_*` env-переменные через `on_value` мутации
    - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`
    - вызовет `apply-overlay.sh --profile --init <profile>` для применения операций (add/replace/delete)
    - опц. предложит применить совместимые stack-overlay'и (`compatible_stacks` из manifest'а)

@@ -62,21 +62,27 @@ done
 
 # ===== T4: content scaffold =====
 echo ""
-echo "==> T4: content scaffold present"
+echo "==> T4: content scaffold present (_index.md везде)"
 assert ".doc-root.yaml exists" "[ -f content/.doc-root.yaml ]"
-assert "00-project README" "[ -f content/00-project/README.md ]"
-assert "10-domain README" "[ -f content/10-domain/README.md ]"
-assert "30-requirements README" "[ -f content/30-requirements/README.md ]"
-assert "40-architecture README" "[ -f content/40-architecture/README.md ]"
-assert "60-implementation README" "[ -f content/60-implementation/README.md ]"
-assert "70-operations README" "[ -f content/70-operations/README.md ]"
+assert "root _index.md" "[ -f content/_index.md ]"
+assert "00-project _index.md" "[ -f content/00-project/_index.md ]"
+assert "00-project/adr _index.md" "[ -f content/00-project/adr/_index.md ]"
+assert "10-domain _index.md" "[ -f content/10-domain/_index.md ]"
+assert "30-requirements _index.md" "[ -f content/30-requirements/_index.md ]"
+assert "30-requirements/functional _index.md" "[ -f content/30-requirements/functional/_index.md ]"
+assert "30-requirements/non-functional _index.md" "[ -f content/30-requirements/non-functional/_index.md ]"
+assert "40-architecture _index.md" "[ -f content/40-architecture/_index.md ]"
+assert "60-implementation _index.md" "[ -f content/60-implementation/_index.md ]"
+assert "70-operations _index.md" "[ -f content/70-operations/_index.md ]"
 assert "glossary.md exists" "[ -f content/10-domain/glossary.md ]"
+assert "no README.md left in content/" "! find content -name README.md | grep -q ."
 
 # ===== T5: init.sh works =====
 echo ""
 echo "==> T5: init.sh substitutes PROJECT_NAME and creates branch"
 INIT_SKIP_GIT_RESET=1 bash scripts/init.sh "test-project" "TEST-PROJECT" "Test description" "test@example.com" >/dev/null
 assert "PROJECT_NAME replaced in CLAUDE.md" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
+assert "PROJECT_NAME replaced in content/_index.md" "! grep -q '{{PROJECT_NAME}}' content/_index.md"
 assert "PROJECT_NAME replaced in AGENTS.md" "! grep -q '{{PROJECT_NAME}}' AGENTS.md"
 assert "test-project name appears" "grep -q 'test-project' CLAUDE.md"
 assert "private branch created" "git show-ref --verify --quiet refs/heads/private"
@@ -88,6 +94,7 @@ echo "==> T6: apply-overlay.sh idempotent"
 git add -A
 $GIT_TEST commit -q -m "after init"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
+assert "validate-content.py зелёный после overlay apply" "python3 scripts/validate-content.py >/dev/null 2>&1"
 assert "marker in CLAUDE.md after apply" "grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
 git add -A
 $GIT_TEST commit -q -m "after apply"
@@ -96,6 +103,11 @@ DIFF_LINES="$(git diff --stat | wc -l | tr -d ' ')"
 assert "second apply produces no diff" "[ \"$DIFF_LINES\" = '0' ]"
 bash scripts/apply-overlay.sh --remove naumen-smp >/dev/null
 assert "marker removed from CLAUDE.md" "! grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
+
+# ===== T8: validate-content.py зелёный после init =====
+echo ""
+echo "==> T8: validate-content.py PASSes after init"
+assert "validate-content.py exit 0 after init" "python3 scripts/validate-content.py >/dev/null 2>&1"
 
 # ===== T7: full init (wipe .git + initial commit) =====
 echo ""

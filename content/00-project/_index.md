@@ -1,4 +1,9 @@
-# 00-project — Проектные артефакты
+---
+order: 10
+title: Проект и ADR
+---
+
+# Проектные артефакты
 
 Цели проекта, ADR (Architecture Decision Records), roadmap, stakeholders.
 

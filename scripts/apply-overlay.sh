@@ -59,7 +59,7 @@ fi
 
 OVERLAY_DIR="docs/overlays/$OVERLAY_NAME"
 
-if [[ ! -d "$OVERLAY_DIR" ]]; then
+if [[ "$PROFILE_MODE" -ne 1 ]] && [[ ! -d "$OVERLAY_DIR" ]]; then
   echo "ERROR: overlay not found: $OVERLAY_DIR"
   exit 1
 fi
@@ -159,8 +159,54 @@ process_yaml_target() {
   fi
 }
 
+PROFILES_ROOT="docs/overlays/profiles"
+
+apply_profile_overlay() {
+  local name="$1"
+  local profile_dir="$PROFILES_ROOT/$name"
+
+  [[ ! -d "$profile_dir" ]] && {
+    echo "ERROR: profile '$name' не существует. Доступные:" >&2
+    ls "$PROFILES_ROOT/" 2>/dev/null >&2 || echo "(нет профилей)" >&2
+    exit 1
+  }
+
+  [[ ! -f "$profile_dir/manifest.yaml" ]] && {
+    echo "ERROR: $profile_dir/manifest.yaml не найден" >&2
+    exit 1
+  }
+
+  echo "Profile: $name"
+
+  # validate-profile перед применением
+  if [[ "${INIT_MODE:-0}" -ne 1 ]]; then
+    python3 scripts/validate-profile.py "$profile_dir" >/dev/null 2>&1 || {
+      echo "ERROR: validate-profile.py упал на $name" >&2
+      python3 scripts/validate-profile.py "$profile_dir" >&2
+      exit 1
+    }
+  fi
+
+  # Прочитать status
+  local status
+  status=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m.get('status', 'unknown'))")
+  echo "Status: $status"
+
+  if [[ "$status" == "stub" ]]; then
+    echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
+  fi
+
+  # Operations будут добавлены в T13-T15
+  echo "(operations execution TBD — see W2-T13/T14/T15)"
+}
+
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "DRY-RUN MODE — no changes will be made"
+fi
+
+if [[ "$PROFILE_MODE" -eq 1 ]]; then
+  apply_profile_overlay "$OVERLAY_NAME"
+  exit 0
 fi
 
 # === CLAUDE.md ===

@@ -161,6 +161,32 @@ process_yaml_target() {
 
 PROFILES_ROOT="docs/overlays/profiles"
 
+op_add() {
+  local profile_dir="$1" source="$2" target="$3" reason="$4"
+  local source_path="$profile_dir/$source"
+
+  echo "[ADD] $source → $target  ($reason)"
+
+  if [[ ! -e "$source_path" ]]; then
+    echo "ERROR: source '$source_path' не существует" >&2
+    exit 1
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "  [DRY-RUN] would copy"
+    return 0
+  fi
+
+  mkdir -p "$target"
+  if [[ -d "$source_path" ]]; then
+    cp -r "$source_path"/* "$target"/ 2>/dev/null || true
+    cp -r "$source_path"/.[!.]* "$target"/ 2>/dev/null || true  # hidden files
+  else
+    cp "$source_path" "$target"
+  fi
+  echo "  ✓ added"
+}
+
 apply_profile_overlay() {
   local name="$1"
   local profile_dir="$PROFILES_ROOT/$name"
@@ -196,8 +222,31 @@ apply_profile_overlay() {
     echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
   fi
 
-  # Operations будут добавлены в T13-T15
-  echo "(operations execution TBD — see W2-T13/T14/T15)"
+  # Прочитать operations
+  local ops_count
+  ops_count=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(len(m.get('operations') or []))")
+
+  if [[ "$ops_count" -eq 0 ]]; then
+    echo "No operations defined — done."
+    return 0
+  fi
+
+  echo "Operations to execute: $ops_count"
+
+  for i in $(seq 0 $((ops_count - 1))); do
+    local op source target reason
+    op=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('op', ''))")
+    source=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('source', ''))")
+    target=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('target', ''))")
+    reason=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('reason', ''))")
+
+    case "$op" in
+      add)     op_add "$profile_dir" "$source" "$target" "$reason" ;;
+      replace) op_replace "$profile_dir" "$source" "$target" "$reason" ;;
+      delete)  op_delete "$target" "$reason" ;;
+      *)       echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
+    esac
+  done
 }
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

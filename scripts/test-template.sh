@@ -158,6 +158,49 @@ assert "T-DRYRUN: prints DRY-RUN" "echo \"$OUT\" | grep -q 'DRY-RUN'"
 cd "$REPO_ROOT"
 rm -rf "$TMP_DRY"
 
+# ===== T-OP-ADD: op: add копирует файлы =====
+echo ""
+echo "==> T-OP-ADD: op: add копирует файлы"
+TMP_ADD=$(mktemp -d)
+mkdir -p "$TMP_ADD/docs/overlays/profiles/test-add/scaffold"
+echo "test content" > "$TMP_ADD/docs/overlays/profiles/test-add/scaffold/article.md"
+mkdir -p "$TMP_ADD/.claude/plugins/project/commands/pipelines"
+mkdir -p "$TMP_ADD/scripts"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_ADD/scripts/"
+chmod +x "$TMP_ADD/scripts/apply-overlay.sh" "$TMP_ADD/scripts/validate-profile.py"
+cat > "$TMP_ADD/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP_ADD/docs/overlays/profiles/test-add/manifest.yaml" <<'YAML'
+schema_version: 1
+name: test-add
+description: T-OP-ADD test
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: scaffold/
+doc_root: ./
+operations:
+  - op: add
+    source: scaffold/
+    target: content/
+    reason: "T-OP-ADD"
+compatible_stacks: []
+YAML
+mkdir -p "$TMP_ADD/content"
+cd "$TMP_ADD"
+set +e
+bash scripts/apply-overlay.sh --profile --init test-add >/dev/null 2>&1
+RC=$?
+set -e
+assert "T-OP-ADD: exit 0" "[ \"$RC\" = '0' ]"
+assert "T-OP-ADD: file copied" "[ -f content/article.md ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_ADD"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

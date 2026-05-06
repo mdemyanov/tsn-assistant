@@ -12,7 +12,6 @@ properties:
     type: Enum
     style: blue
     icon: file-text
-    required: true
     values:
       - Требование
       - Архитектура
@@ -26,7 +25,6 @@ properties:
     type: Enum
     style: green
     icon: layers
-    required: true
     values:
       - PoC
       - MVP
@@ -37,7 +35,6 @@ properties:
     type: Enum
     style: orange
     icon: check-circle
-    required: true
     values:
       - Draft
       - Review

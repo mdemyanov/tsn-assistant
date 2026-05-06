@@ -7,9 +7,12 @@ Exit codes: 0 — clean; 1 — есть errors; 2 — pyyaml не установ
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+PLACEHOLDER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
 
 try:
     import yaml  # PyYAML
@@ -39,6 +42,17 @@ def parse_frontmatter(file_path: Path) -> dict | None:
         return None
 
 
+def has_placeholder(file_path: Path) -> bool:
+    """Возвращает True если frontmatter содержит литерал {{...}}."""
+    text = file_path.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return False
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return False
+    return bool(PLACEHOLDER_RE.search(parts[1]))
+
+
 def load_doc_root(content_dir: Path) -> dict:
     """Читает content/.doc-root.yaml. Возвращает {} если нет/невалиден."""
     path = content_dir / ".doc-root.yaml"
@@ -56,6 +70,8 @@ def check_property_names(content_dir: Path, doc_root: dict) -> list[Issue]:
     issues = []
     for md_path in content_dir.rglob("*.md"):
         if md_path.name == "_index.md":
+            continue
+        if has_placeholder(md_path):
             continue
         fm = parse_frontmatter(md_path)
         if not fm or "properties" not in fm or not isinstance(fm["properties"], list):
@@ -80,6 +96,8 @@ def check_property_values(content_dir: Path, doc_root: dict) -> list[Issue]:
     issues = []
     for md_path in content_dir.rglob("*.md"):
         if md_path.name == "_index.md":
+            continue
+        if has_placeholder(md_path):
             continue
         fm = parse_frontmatter(md_path)
         if not fm or "properties" not in fm or not isinstance(fm["properties"], list):
@@ -118,6 +136,16 @@ def check_filter_coverage(content_dir: Path, doc_root: dict) -> list[Issue]:
         if not (declared & filter_names):
             issues.append(Issue("warning", str(md_path),
                 f"не объявляет ни одного property из filterProperties {sorted(filter_names)} — фильтр в Gramax не сработает"))
+    return issues
+
+
+def check_placeholders(content_dir: Path) -> list[Issue]:
+    """C7: warning про плейсхолдеры в frontmatter."""
+    issues = []
+    for md_path in content_dir.rglob("*.md"):
+        if has_placeholder(md_path):
+            issues.append(Issue("warning", str(md_path),
+                "frontmatter содержит плейсхолдер {{...}}; ожидается замена через init.sh"))
     return issues
 
 
@@ -203,6 +231,7 @@ def main(argv: list[str]) -> int:
     issues.extend(check_property_names(content_dir, doc_root))
     issues.extend(check_property_values(content_dir, doc_root))
     issues.extend(check_filter_coverage(content_dir, doc_root))
+    issues.extend(check_placeholders(content_dir))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

@@ -329,6 +329,69 @@ assert "C6 warning не валит exit code" "[ \"$RC\" = '0' ]"
 assert "C6 сообщение содержит warning + filterProperties" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -qi 'filter'"
 rm -rf "$TMP_C6"
 
+# ===== C7: плейсхолдеры {{...}} в frontmatter — warning, не error =====
+echo ""
+echo "==> C7: {{PROJECT_NAME}} в _index.md — только warning"
+TMP_C7="$(mktemp -d)"
+mkdir -p "$TMP_C7/content"
+cat > "$TMP_C7/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A]
+filterProperties: []
+YAML
+cat > "$TMP_C7/content/_index.md" <<'MD'
+---
+order: 0
+title: {{PROJECT_NAME}}
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C7/content" 2>&1)
+RC=$?
+set -e
+assert "C7 exit 0 при плейсхолдере" "[ \"$RC\" = '0' ]"
+assert "C7 warning про плейсхолдер" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -q '{{'"
+rm -rf "$TMP_C7"
+
+echo ""
+echo "==> C7: статья с плейсхолдером — C4/C5 не срабатывают"
+TMP_C7B="$(mktemp -d)"
+mkdir -p "$TMP_C7B/content"
+cat > "$TMP_C7B/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A]
+filterProperties: []
+YAML
+cat > "$TMP_C7B/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C7B/content/article.md" <<'MD'
+---
+order: 1
+title: {{TITLE}}
+properties:
+  - name: Тип
+    value: [A]
+---
+MD
+
+set +e
+python3 "$VALIDATOR" "$TMP_C7B/content" >/dev/null 2>&1
+RC=$?
+set -e
+assert "C7 статья с {{TITLE}} — exit 0" "[ \"$RC\" = '0' ]"
+rm -rf "$TMP_C7B"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

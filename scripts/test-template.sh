@@ -318,6 +318,53 @@ assert "T-OP-DELETE-STRICT: --force удаляет" "[ ! -d content/full-dir ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_DELS"
 
+# ===== T-INIT-PROFILE: init с --profile project =====
+echo ""
+echo "==> T-INIT-PROFILE: init с --profile project"
+TMP_INIT=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_INIT/"
+cd "$TMP_INIT"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+# Pass empty answer to compliance_domain prompt (default = none, no compliance opt-in)
+echo | bash scripts/init.sh --profile project "Test" "TST" "desc" "test@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-INIT-PROFILE: exit 0" "[ \"$RC\" = '0' ]"
+assert "T-INIT-PROFILE: scaffold project применён" "[ -d content/00-project/plans ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_INIT"
+
+# ===== T-INIT-PROFILE-KB: init с --profile kb-team =====
+echo ""
+echo "==> T-INIT-PROFILE-KB: init с --profile kb-team"
+TMP_INIT_KB=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_INIT_KB/"
+cd "$TMP_INIT_KB"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+bash scripts/init.sh --profile kb-team "Test" "TST" "desc" "test@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-INIT-PROFILE-KB: exit 0" "[ \"$RC\" = '0' ]"
+assert "T-INIT-PROFILE-KB: 30-runbooks существует" "[ -d content/30-runbooks ]"
+assert "T-INIT-PROFILE-KB: 30-requirements удалена" "[ ! -d content/30-requirements ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_INIT_KB"
+
+# ===== T-LEGACY: init без --profile fallback на project =====
+echo ""
+echo "==> T-LEGACY: init без --profile fallback на project"
+TMP_LEG=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_LEG/"
+cd "$TMP_LEG"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+echo | bash scripts/init.sh "Test" "TST" "desc" "test@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-LEGACY: exit 0" "[ \"$RC\" = '0' ]"
+assert "T-LEGACY: project scaffold применён" "[ -d content/00-project/plans ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_LEG"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

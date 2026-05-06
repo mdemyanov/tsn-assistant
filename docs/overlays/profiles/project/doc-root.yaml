@@ -2,8 +2,6 @@ title: {{PROJECT_NAME}} — База знаний
 description: {{PROJECT_DESCRIPTION}}
 syntax: XML
 language: ru
-editors:
-  - {{EDITOR_EMAIL}}
 
 properties:
   - name: Тип контента
@@ -39,3 +37,6 @@ properties:
     values: [Draft, Review, Approved, Archived]
 
 filterProperties: [Тип контента, Фаза, Статус]
+
+editors:
+  - {{EDITOR_EMAIL}}

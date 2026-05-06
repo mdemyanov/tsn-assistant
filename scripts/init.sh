@@ -4,6 +4,16 @@
 
 set -euo pipefail
 
+# T40: parse --profile flag BEFORE positional args
+PROFILE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile) PROFILE="$2"; shift 2 ;;
+    --profile=*) PROFILE="${1#*=}"; shift ;;
+    *) break ;;
+  esac
+done
+
 # 1. Проверка, что мы в git-репо
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "ERROR: not a git repository. Run 'git init' first."
@@ -64,6 +74,78 @@ else
 fi
 GIT_REMOTE_URL="${GIT_REMOTE_URL:-}"
 
+# 3.X — T40: Профиль (если не указан --profile, спросить интерактивно)
+if [[ -z "$PROFILE" ]]; then
+  if [[ ! -d "docs/overlays/profiles" ]]; then
+    PROFILE="project"  # legacy fallback
+    echo "WARNING: docs/overlays/profiles/ не найдена — fallback на профиль 'project'"
+  elif [[ ! -t 0 ]]; then
+    PROFILE="project"  # non-interactive default (e.g. echo | bash init.sh)
+  else
+    echo "Доступные профили:"
+    for p in docs/overlays/profiles/*/; do
+      [[ ! -d "$p" ]] && continue
+      pname=$(basename "$p")
+      [[ "$pname" == ".gitkeep" ]] && continue
+      [[ -f "$p/manifest.yaml" ]] && echo "  - $pname"
+    done
+    read -r -p "Профиль (default: project): " PROFILE
+    PROFILE="${PROFILE:-project}"
+  fi
+fi
+
+# Проверить что профиль существует
+if [[ ! -d "docs/overlays/profiles/$PROFILE" ]]; then
+  # Backwards-compat: если профилей нет в репо (старый шаблон), пропускаем профильный flow
+  if [[ ! -d "docs/overlays/profiles" ]] || [[ -z "$(ls -A docs/overlays/profiles 2>/dev/null | grep -v '^\.gitkeep$')" ]]; then
+    echo "WARNING: профильная система недоступна, init работает в legacy режиме (Wave 1)"
+    PROFILE=""  # отключаем профильный flow
+  else
+    echo "ERROR: профиль '$PROFILE' не существует в docs/overlays/profiles/"
+    exit 1
+  fi
+fi
+
+if [[ -n "$PROFILE" ]]; then
+  echo "Profile: $PROFILE"
+fi
+
+# 3.Y — T40: Динамические init_prompts из манифеста
+# (ответы собираем в PROMPT_ANSWERS_LOG для отладки; bash 3.2-совместимо)
+PROMPT_ANSWERS_LOG=""
+
+if [[ -n "$PROFILE" ]]; then
+  PROMPTS_COUNT=$(python3 -c "
+import yaml, sys
+try:
+    m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
+    print(len(m.get('init_prompts') or []))
+except Exception as e:
+    print(0, file=sys.stderr)
+    print(0)
+" 2>/dev/null)
+
+  if [[ "$PROMPTS_COUNT" -gt 0 ]]; then
+    echo "Профиль '$PROFILE' требует $PROMPTS_COUNT доп. вопросов:"
+    for i in $(seq 0 $((PROMPTS_COUNT - 1))); do
+      PROMPT_ID=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i]['id'])")
+      PROMPT_TEXT=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i]['prompt'])")
+      CHOICES=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); c=m['init_prompts'][$i].get('choices') or []; print(','.join(map(str,c)))")
+      DEFAULT=$(python3 -c "import yaml; m=yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml')); print(m['init_prompts'][$i].get('default', ''))")
+
+      echo "  $PROMPT_TEXT"
+      [[ -n "$CHOICES" ]] && echo "  Варианты: $CHOICES"
+      if [[ ! -t 0 ]]; then
+        ANSWER="$DEFAULT"
+      else
+        read -r -p "  Ответ (default: $DEFAULT): " ANSWER
+        ANSWER="${ANSWER:-$DEFAULT}"
+      fi
+      PROMPT_ANSWERS_LOG+="$PROMPT_ID=$ANSWER;"
+    done
+  fi
+fi
+
 # 3.3. Защита от случайного push в репозиторий шаблона
 if [[ -n "$GIT_REMOTE_URL" ]]; then
   if [[ "$GIT_REMOTE_URL" =~ (project[-_]template)(\.git)?/?$ ]]; then
@@ -96,6 +178,61 @@ for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml content/_index.md;
   replace_in_file "$f" '{{PROJECT_DESCRIPTION}}' "$DESCRIPTION"
   replace_in_file "$f" '{{EDITOR_EMAIL}}'        "$EDITOR_EMAIL"
 done
+
+# 4.5 — T40: Применить профильный overlay (operations: add/replace/delete)
+if [[ -n "$PROFILE" ]]; then
+  echo "Applying profile overlay '$PROFILE'..."
+  # --force нужен потому что Wave 1 scaffold (30-requirements/, 40-architecture/...)
+  # содержит реальный baseline-контент, который kb-team / другие профили удаляют.
+  # На init это безопасно: пользователь только что клонировал шаблон.
+  if ! bash scripts/apply-overlay.sh --profile --init --force "$PROFILE"; then
+    echo "ERROR: apply-overlay.sh упал на профиле '$PROFILE'" >&2
+    exit 1
+  fi
+
+  # После применения профиля — заново подставить плейсхолдеры в новых файлах из scaffold
+  for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml content/_index.md $(find content -name '_index.md' 2>/dev/null); do
+    replace_in_file "$f" '{{PROJECT_NAME}}'        "$NAME"
+    replace_in_file "$f" '{{PROJECT_CODE}}'        "$CODE"
+    replace_in_file "$f" '{{PROJECT_DESCRIPTION}}' "$DESCRIPTION"
+    replace_in_file "$f" '{{EDITOR_EMAIL}}'        "$EDITOR_EMAIL"
+  done
+
+  # Опц. stack-overlay'и из compatible_stacks
+  COMPAT_STACKS=$(python3 -c "
+import yaml
+m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
+s = m.get('compatible_stacks') or []
+print(','.join(s) if s and s != ['*'] else '')
+" 2>/dev/null)
+
+  if [[ -n "$COMPAT_STACKS" ]] && [[ "${INIT_SKIP_GIT_RESET:-0}" != "1" ]] && [[ -t 0 ]]; then
+    echo "Совместимые stack-overlay'и для профиля '$PROFILE': $COMPAT_STACKS"
+    read -r -p "Применить какие-то? (через запятую, или пусто чтобы пропустить): " STACKS_TO_APPLY
+    if [[ -n "$STACKS_TO_APPLY" ]]; then
+      IFS=',' read -ra STACKS <<< "$STACKS_TO_APPLY"
+      for s in "${STACKS[@]}"; do
+        s=$(echo "$s" | xargs)  # trim whitespace
+        echo "  Applying stack '$s'..."
+        bash scripts/apply-overlay.sh "$s"
+      done
+    fi
+  fi
+fi
+
+# 4.6 — T40: Валидация
+if command -v python3 >/dev/null 2>&1; then
+  if [[ -f scripts/validate-content.py ]]; then
+    python3 scripts/validate-content.py >/dev/null || {
+      echo "WARNING: validate-content.py exit non-zero — проверь content/" >&2
+    }
+  fi
+  if [[ -n "$PROFILE" ]] && [[ -f scripts/validate-profile.py ]]; then
+    python3 scripts/validate-profile.py >/dev/null || {
+      echo "WARNING: validate-profile.py exit non-zero" >&2
+    }
+  fi
+fi
 
 # 5. Wipe .git и initial commit (или skip для тестов)
 if [[ "${INIT_SKIP_GIT_RESET:-0}" == "1" ]]; then

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -15,6 +16,31 @@ try:
 except ImportError:
     print("ERROR: PyYAML не установлен. Установи: pip install pyyaml", file=sys.stderr)
     sys.exit(2)
+
+
+@dataclass
+class Issue:
+    level: str  # "error" | "warning"
+    path: str
+    message: str
+
+
+def check_indexes(content_dir: Path) -> list[Issue]:
+    """C1: каждая подпапка с .md или вложенными .md содержит _index.md."""
+    issues = []
+    for d in [content_dir, *sorted(p for p in content_dir.rglob("*") if p.is_dir())]:
+        # Пропускаем подпапки без .md (рекурсивно)
+        has_md = any(d.rglob("*.md"))
+        if not has_md:
+            continue
+        index_path = d / "_index.md"
+        if not index_path.exists():
+            issues.append(Issue(
+                level="error",
+                path=f"{d}/",
+                message="missing _index.md (Gramax не покажет раздел в навигации)",
+            ))
+    return issues
 
 
 def main(argv: list[str]) -> int:
@@ -28,8 +54,17 @@ def main(argv: list[str]) -> int:
         print(f"ERROR: not a directory: {content_dir}", file=sys.stderr)
         return 2
 
-    print(f"{content_dir}/: OK (skeleton, no checks yet)")
-    return 0
+    issues = []
+    issues.extend(check_indexes(content_dir))
+
+    errors = [i for i in issues if i.level == "error"]
+    warnings = [i for i in issues if i.level == "warning"]
+
+    for issue in issues:
+        print(f"{issue.path}: {issue.message}  [{issue.level}]")
+
+    print(f"\nErrors: {len(errors)} | Warnings: {len(warnings)}")
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

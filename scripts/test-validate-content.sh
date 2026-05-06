@@ -45,6 +45,77 @@ YAML
 echo "==> T0: --help"
 assert "validator --help прошёл" "python3 \"$VALIDATOR\" --help >/dev/null 2>&1"
 
+# ===== C1: missing _index.md =====
+echo ""
+echo "==> C1: подпапка без _index.md детектится"
+TMP1="$(mktemp -d)"
+mkdir -p "$TMP1/content/sub"
+cat > "$TMP1/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties: []
+filterProperties: []
+YAML
+echo '---' > "$TMP1/content/sub/article.md"
+echo 'order: 1' >> "$TMP1/content/sub/article.md"
+echo 'title: A' >> "$TMP1/content/sub/article.md"
+echo '---' >> "$TMP1/content/sub/article.md"
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP1/content" 2>&1)
+RC=$?
+set -e
+assert "exit 1 при missing _index.md" "[ \"$RC\" = '1' ]"
+assert "сообщение содержит missing _index.md" "echo \"$OUT\" | grep -q 'missing _index.md'"
+assert "указан путь sub" "echo \"$OUT\" | grep -q 'sub'"
+rm -rf "$TMP1"
+
+echo ""
+echo "==> C1: корневой _index.md обязателен"
+TMP2="$(mktemp -d)"
+mkdir -p "$TMP2/content"
+cat > "$TMP2/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties: []
+filterProperties: []
+YAML
+echo '---' > "$TMP2/content/article.md"
+echo 'order: 1' >> "$TMP2/content/article.md"
+echo 'title: A' >> "$TMP2/content/article.md"
+echo '---' >> "$TMP2/content/article.md"
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP2/content" 2>&1)
+RC=$?
+set -e
+assert "exit 1 при отсутствии корневого _index.md" "[ \"$RC\" = '1' ]"
+assert "ошибка про корневой _index.md" "echo \"$OUT\" | grep -q 'missing _index.md'"
+rm -rf "$TMP2"
+
+echo ""
+echo "==> C1: каталог с _index.md проходит"
+TMP3="$(mktemp -d)"
+mkdir -p "$TMP3/content/sub"
+cat > "$TMP3/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties: []
+filterProperties: []
+YAML
+echo '---' > "$TMP3/content/_index.md"
+echo 'order: 0' >> "$TMP3/content/_index.md"
+echo 'title: Root' >> "$TMP3/content/_index.md"
+echo '---' >> "$TMP3/content/_index.md"
+echo '---' > "$TMP3/content/sub/_index.md"
+echo 'order: 1' >> "$TMP3/content/sub/_index.md"
+echo 'title: Sub' >> "$TMP3/content/sub/_index.md"
+echo '---' >> "$TMP3/content/sub/_index.md"
+
+set +e
+python3 "$VALIDATOR" "$TMP3/content" >/dev/null 2>&1
+RC=$?
+set -e
+assert "exit 0 для каталога с _index.md везде" "[ \"$RC\" = '0' ]"
+rm -rf "$TMP3"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

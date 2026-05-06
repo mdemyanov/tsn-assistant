@@ -57,6 +57,22 @@
 3. В `.claude/plugins/<new-name>/.claude-plugin/plugin.json` поменяй `name`.
 4. В `.claude/settings.json` поменяй ключ в `enabledPlugins`: `project@local` → `<new-name>@local`.
 
+## Правила Gramax-каталога (`content/`)
+
+- **`_index.md` в каждой подпапке** (где есть `.md` файлы или вложенные подкаталоги). Без него Gramax не показывает раздел в навигации.
+- **`_index.md` НЕ содержит блок `properties:`** — раздел не имеет своего типа/статуса; properties живут на статьях.
+- **Корневой `content/_index.md`** разрешён и используется как главная страница каталога (навигация + дашборд `<view>`).
+- **Frontmatter статьи — object-нотация:**
+  ```yaml
+  properties:
+    - name: Тип контента
+      value: [ADR]
+  ```
+  Плоская нотация (`- Тип контента: ADR`) — устарела, рендерится непредсказуемо.
+- **Cross-каталожные ссылки** (между разными `.doc-root.yaml`) — только inline code (`` `other-catalog/path.md` ``), не markdown link.
+- **Эталон production-каталога:** `/Users/mdemyanov/Devel/naumen-ecosystem/business-requirements/`.
+- **Валидация:** `python3 scripts/validate-content.py` — обязательно зелёный перед merge `private→public`.
+
 ## Поток работы
 
 Канонический порядок новой фичи: **Researcher (опц.) → BA → SA → Dev → DevOps**. PM координирует, `/pm-review` валидирует перед merge в `public`.

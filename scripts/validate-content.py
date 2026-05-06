@@ -7,69 +7,13 @@ Exit codes: 0 — clean; 1 — есть errors; 2 — pyyaml не установ
 from __future__ import annotations
 
 import argparse
-import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
-PLACEHOLDER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
-
-try:
-    import yaml  # PyYAML
-except ImportError:
-    print("ERROR: PyYAML не установлен. Установи: pip install pyyaml", file=sys.stderr)
-    sys.exit(2)
-
-
-@dataclass
-class Issue:
-    level: str  # "error" | "warning"
-    path: str
-    message: str
-
-
-def parse_frontmatter(file_path: Path) -> dict | None:
-    """Извлекает YAML-frontmatter между --- из markdown-файла. Возвращает None если нет."""
-    text = file_path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return None
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return None
-    try:
-        return yaml.safe_load(parts[1]) or {}
-    except yaml.YAMLError:
-        return None
-
-
-def has_placeholder(file_path: Path) -> bool:
-    """Возвращает True если frontmatter содержит литерал {{...}}."""
-    text = file_path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return False
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return False
-    return bool(PLACEHOLDER_RE.search(parts[1]))
-
-
-def load_doc_root(content_dir: Path) -> dict:
-    """Читает content/.doc-root.yaml. Возвращает {} если нет/невалиден.
-
-    Если файл содержит плейсхолдеры {{...}} (актуально для свежего шаблона
-    до запуска init.sh), они подменяются на безопасные строковые значения
-    перед YAML-парсингом, чтобы C4/C5/C6 могли корректно работать.
-    """
-    path = content_dir / ".doc-root.yaml"
-    if not path.exists():
-        return {}
-    try:
-        text = path.read_text(encoding="utf-8")
-        # Подставляем плейсхолдеры — иначе YAML-парсер падает на {...} как flow mapping.
-        substituted = PLACEHOLDER_RE.sub(lambda m: f'"PLACEHOLDER_{m.group(0)[2:-2]}"', text)
-        return yaml.safe_load(substituted) or {}
-    except yaml.YAMLError:
-        return {}
+sys.path.insert(0, str(Path(__file__).parent))
+from _validate_common import (
+    Issue, parse_frontmatter, parse_yaml_file, has_placeholder, PLACEHOLDER_RE, require_yaml,
+)
 
 
 def check_property_names(content_dir: Path, doc_root: dict) -> list[Issue]:
@@ -233,6 +177,7 @@ def check_indexes(content_dir: Path) -> list[Issue]:
 
 
 def main(argv: list[str]) -> int:
+    require_yaml()
     parser = argparse.ArgumentParser(description="Validate Gramax content/ structure")
     parser.add_argument("content_dir", nargs="?", default="content",
                         help="Path to content directory (default: content)")
@@ -247,7 +192,7 @@ def main(argv: list[str]) -> int:
     issues.extend(check_indexes(content_dir))
     issues.extend(check_index_no_properties(content_dir))
     issues.extend(check_object_notation(content_dir))
-    doc_root = load_doc_root(content_dir)
+    doc_root = parse_yaml_file(content_dir / ".doc-root.yaml") or {}
     issues.extend(check_property_names(content_dir, doc_root))
     issues.extend(check_property_values(content_dir, doc_root))
     issues.extend(check_filter_coverage(content_dir, doc_root))

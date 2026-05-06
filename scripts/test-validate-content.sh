@@ -433,6 +433,12 @@ assert "C7-doc-root warning про плейсхолдер" "echo \"$OUT\" | grep
 assert "C7-doc-root C4 не срабатывает на корректное property" "! echo \"$OUT\" | grep -q 'не объявлен'"
 rm -rf "$TMP_DR"
 
+# ===== Shared module sanity =====
+echo ""
+echo "==> SHARED: _validate_common.py importable"
+assert "import _validate_common works" "python3 -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); import _validate_common; print(_validate_common.PLACEHOLDER_RE.pattern)' >/dev/null 2>&1"
+assert "Issue dataclass exposed" "python3 -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); from _validate_common import Issue; i = Issue(\"error\", \"x\", \"y\"); print(i.level)' | grep -q '^error$'"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

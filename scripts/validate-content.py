@@ -54,12 +54,20 @@ def has_placeholder(file_path: Path) -> bool:
 
 
 def load_doc_root(content_dir: Path) -> dict:
-    """Читает content/.doc-root.yaml. Возвращает {} если нет/невалиден."""
+    """Читает content/.doc-root.yaml. Возвращает {} если нет/невалиден.
+
+    Если файл содержит плейсхолдеры {{...}} (актуально для свежего шаблона
+    до запуска init.sh), они подменяются на безопасные строковые значения
+    перед YAML-парсингом, чтобы C4/C5/C6 могли корректно работать.
+    """
     path = content_dir / ".doc-root.yaml"
     if not path.exists():
         return {}
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        text = path.read_text(encoding="utf-8")
+        # Подставляем плейсхолдеры — иначе YAML-парсер падает на {...} как flow mapping.
+        substituted = PLACEHOLDER_RE.sub(lambda m: f'"PLACEHOLDER_{m.group(0)[2:-2]}"', text)
+        return yaml.safe_load(substituted) or {}
     except yaml.YAMLError:
         return {}
 
@@ -149,6 +157,18 @@ def check_placeholders(content_dir: Path) -> list[Issue]:
     return issues
 
 
+def check_doc_root_placeholders(content_dir: Path) -> list[Issue]:
+    """C7-doc-root: warning, если .doc-root.yaml содержит плейсхолдеры {{...}}."""
+    path = content_dir / ".doc-root.yaml"
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    if PLACEHOLDER_RE.search(text):
+        return [Issue("warning", str(path),
+            "содержит плейсхолдер {{...}}; ожидается замена через init.sh")]
+    return []
+
+
 def check_index_no_properties(content_dir: Path) -> list[Issue]:
     """C2: _index.md не должен содержать properties:."""
     issues = []
@@ -232,6 +252,7 @@ def main(argv: list[str]) -> int:
     issues.extend(check_property_values(content_dir, doc_root))
     issues.extend(check_filter_coverage(content_dir, doc_root))
     issues.extend(check_placeholders(content_dir))
+    issues.extend(check_doc_root_placeholders(content_dir))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

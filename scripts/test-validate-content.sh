@@ -392,6 +392,47 @@ set -e
 assert "C7 статья с {{TITLE}} — exit 0" "[ \"$RC\" = '0' ]"
 rm -rf "$TMP_C7B"
 
+# ===== C7-doc-root: плейсхолдеры в .doc-root.yaml =====
+echo ""
+echo "==> C7-doc-root: {{X}} в .doc-root.yaml — warning, не error"
+TMP_DR="$(mktemp -d)"
+mkdir -p "$TMP_DR/content"
+cat > "$TMP_DR/content/.doc-root.yaml" <<'YAML'
+title: {{PROJECT_NAME}}
+code: {{PROJECT_CODE}}
+properties:
+  - name: Тип
+    type: Enum
+    values: [A]
+filterProperties: []
+editors:
+  - {{EDITOR_EMAIL}}
+YAML
+cat > "$TMP_DR/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_DR/content/article.md" <<'MD'
+---
+order: 1
+title: A
+properties:
+  - name: Тип
+    value: [A]
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_DR/content" 2>&1)
+RC=$?
+set -e
+assert "C7-doc-root exit 0" "[ \"$RC\" = '0' ]"
+assert "C7-doc-root warning про плейсхолдер" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -q 'doc-root'"
+assert "C7-doc-root C4 не срабатывает на корректное property" "! echo \"$OUT\" | grep -q 'не объявлен'"
+rm -rf "$TMP_DR"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

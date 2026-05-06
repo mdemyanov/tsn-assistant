@@ -201,6 +201,45 @@ assert "T-OP-ADD: file copied" "[ -f content/article.md ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_ADD"
 
+# ===== T-OP-REPLACE: op: replace перезаписывает =====
+echo ""
+echo "==> T-OP-REPLACE: op: replace перезаписывает"
+TMP_REP=$(mktemp -d)
+mkdir -p "$TMP_REP/docs/overlays/profiles/test-rep"
+mkdir -p "$TMP_REP/.claude/plugins/project/commands/pipelines"
+mkdir -p "$TMP_REP/scripts" "$TMP_REP/content"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_REP/scripts/"
+chmod +x "$TMP_REP/scripts/apply-overlay.sh" "$TMP_REP/scripts/validate-profile.py"
+echo "old" > "$TMP_REP/content/file.txt"
+echo "new" > "$TMP_REP/docs/overlays/profiles/test-rep/file.txt"
+cat > "$TMP_REP/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP_REP/docs/overlays/profiles/test-rep/manifest.yaml" <<'YAML'
+schema_version: 1
+name: test-rep
+description: replace test
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: file.txt
+operations:
+  - op: replace
+    source: file.txt
+    target: content/file.txt
+    reason: "T-OP-REPLACE"
+compatible_stacks: []
+YAML
+cd "$TMP_REP"
+bash scripts/apply-overlay.sh --profile --init test-rep >/dev/null 2>&1
+assert "T-OP-REPLACE: file replaced" "grep -q 'new' content/file.txt"
+cd "$REPO_ROOT"
+rm -rf "$TMP_REP"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

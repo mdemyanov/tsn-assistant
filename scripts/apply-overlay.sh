@@ -187,6 +187,24 @@ op_add() {
   echo "  ✓ added"
 }
 
+op_replace() {
+  local profile_dir="$1" source="$2" target="$3" reason="$4"
+  local source_path="$profile_dir/$source"
+
+  echo "[REPLACE] $source → $target  ($reason)"
+
+  [[ ! -f "$source_path" ]] && { echo "ERROR: source '$source_path' не существует" >&2; exit 1; }
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "  [DRY-RUN] would overwrite"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$target")"
+  cp -f "$source_path" "$target"
+  echo "  ✓ replaced"
+}
+
 apply_profile_overlay() {
   local name="$1"
   local profile_dir="$PROFILES_ROOT/$name"

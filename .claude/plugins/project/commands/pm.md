@@ -36,3 +36,43 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Bash(git status:*), Bash(git log:*
 - Зависимости (граф RES→BA→SA→DEV→OPS)
 - Конкретные команды запуска каждой фазы
 - GO-критерии milestone
+
+## Pipeline-orchestrators (Wave 2)
+
+Альтернатива ручному `/pm decompose` — orchestrator-pipeline'ы:
+
+| Pipeline | Когда использовать |
+|----------|---------------------|
+| `/pipelines/project-planning <epic>` | Декомпозиция эпика и автоматическое прохождение фаз (Researcher → BA → SA → QA-author → Dev → QA-runner → BA-acceptance) |
+| `/pipelines/ba-acceptance <req>` | Gate проверка AC ↔ реализация |
+| `/pipelines/critical-path <epic>` | Анализ зависимостей задач, mermaid Gantt |
+
+Если эпик новый — рекомендуй `/pipelines/project-planning`. Если декомпозиция вручную (ad-hoc) — `/pm decompose`.
+
+### Worktree-ритуал
+
+Перед запуском pipeline'а или большой ad-hoc декомпозиции PM создаёт isolated worktree (через `superpowers:using-git-worktrees`):
+
+```bash
+git worktree add .worktrees/epic-<slug> -b epic-<slug> private
+cd .worktrees/epic-<slug>
+```
+
+Это изолирует работу эпика от текущей `private` без переключений.
+
+### Soft-suggest opt-in subagents
+
+При парсинге `$ARGUMENTS` для decompose проверь триггеры и предложи opt-in роли:
+
+| Триггер в запросе | Suggest |
+|-------------------|---------|
+| "secrets", "SAST", "supply-chain", "vulnerability", "dependency audit" | DevSecOps в Dev-фазе |
+| "152-ФЗ", "152-fz", "ISO 27001", "iso27001", "GDPR", "compliance", "internal policy" | Compliance research-задача |
+| "customer-facing", "public docs", "external readers", "user-facing" | Tech Writer как secondary editor |
+| "deploy", "runbook", "monitoring", "rollback", "on-call" | DevOps |
+
+**Формат предложения** (показать пользователю в чате, НЕ автоматически активировать):
+
+> «Заметил триггер X в запросе — предлагаю включить роль Y в декомпозицию. Это opt-in, можно skip. Подтверди?»
+
+Жди явного "да" от пользователя; в декомпозицию добавляй задачу для opt-in роли только после подтверждения.

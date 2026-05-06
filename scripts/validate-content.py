@@ -53,6 +53,37 @@ def check_index_no_properties(content_dir: Path) -> list[Issue]:
     return issues
 
 
+def check_object_notation(content_dir: Path) -> list[Issue]:
+    """C3: properties в статьях — список dict-ов с ключами name+value."""
+    issues = []
+    for md_path in content_dir.rglob("*.md"):
+        if md_path.name == "_index.md":
+            continue
+        fm = parse_frontmatter(md_path)
+        if not fm or "properties" not in fm:
+            continue
+        props = fm["properties"]
+        if not isinstance(props, list):
+            issues.append(Issue("error", str(md_path),
+                "properties должен быть списком (получено: " + type(props).__name__ + ")"))
+            continue
+        for p in props:
+            if not isinstance(p, dict):
+                issues.append(Issue("error", str(md_path),
+                    "элемент properties должен быть dict-ом (получено: " + type(p).__name__ + ")"))
+                continue
+            keys = set(p.keys())
+            if keys != {"name", "value"}:
+                # Если ровно один ключ — это плоская нотация.
+                if len(keys) == 1:
+                    issues.append(Issue("error", str(md_path),
+                        f"использует плоскую frontmatter-нотацию ({list(keys)[0]}: ...); требуется object-нотация (- name: X / value: [Y])"))
+                else:
+                    issues.append(Issue("error", str(md_path),
+                        f"элемент properties должен иметь ровно ключи name+value (получено: {sorted(keys)})"))
+    return issues
+
+
 def check_indexes(content_dir: Path) -> list[Issue]:
     """C1: каждая подпапка с .md или вложенными .md содержит _index.md."""
     issues = []
@@ -85,6 +116,7 @@ def main(argv: list[str]) -> int:
     issues = []
     issues.extend(check_indexes(content_dir))
     issues.extend(check_index_no_properties(content_dir))
+    issues.extend(check_object_notation(content_dir))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

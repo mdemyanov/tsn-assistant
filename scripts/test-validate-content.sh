@@ -144,6 +144,77 @@ assert "C2 exit 1 при properties в _index.md" "[ \"$RC\" = '1' ]"
 assert "C2 сообщение про properties в _index.md" "echo \"$OUT\" | grep -q '_index.md не должен иметь properties'"
 rm -rf "$TMP_C2"
 
+# ===== C3: object-нотация в frontmatter статьи =====
+echo ""
+echo "==> C3: плоская нотация даёт error"
+TMP_C3="$(mktemp -d)"
+mkdir -p "$TMP_C3/content"
+cat > "$TMP_C3/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A, B]
+filterProperties: []
+YAML
+cat > "$TMP_C3/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C3/content/article.md" <<'MD'
+---
+order: 1
+title: Article
+properties:
+  - Тип: A
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C3/content" 2>&1)
+RC=$?
+set -e
+assert "C3 exit 1 при плоской нотации" "[ \"$RC\" = '1' ]"
+assert "C3 сообщение про плоскую нотацию" "echo \"$OUT\" | grep -qi 'плоск'"
+rm -rf "$TMP_C3"
+
+echo ""
+echo "==> C3: object-нотация принимается"
+TMP_C3B="$(mktemp -d)"
+mkdir -p "$TMP_C3B/content"
+cat > "$TMP_C3B/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties:
+  - name: Тип
+    type: Enum
+    values: [A, B]
+filterProperties: []
+YAML
+cat > "$TMP_C3B/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+---
+MD
+cat > "$TMP_C3B/content/article.md" <<'MD'
+---
+order: 1
+title: Article
+properties:
+  - name: Тип
+    value: [A]
+---
+MD
+
+set +e
+python3 "$VALIDATOR" "$TMP_C3B/content" >/dev/null 2>&1
+RC=$?
+set -e
+assert "C3 object-нотация exit 0" "[ \"$RC\" = '0' ]"
+rm -rf "$TMP_C3B"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

@@ -129,6 +129,32 @@ def check_m4_subagent_names(profile_dir: Path, manifest: dict, known_roles: set[
     return issues
 
 
+def collect_known_pipelines(repo_root: Path) -> set[str]:
+    """Возвращает множество pipeline names из commands/pipelines/*.md."""
+    pipelines_dir = repo_root / ".claude" / "plugins" / "project" / "commands" / "pipelines"
+    if not pipelines_dir.is_dir():
+        return set()
+    return {p.stem for p in pipelines_dir.glob("*.md")}
+
+
+def check_m5_pipeline_names(profile_dir: Path, manifest: dict, known_pipelines: set[str]) -> list[Issue]:
+    """M5: pipelines существуют в commands/pipelines/ или явно disabled."""
+    pipelines = manifest.get("pipelines") or {}
+    if not isinstance(pipelines, dict):
+        return []
+    issues = []
+    for pipe, status in pipelines.items():
+        if status == "disabled":
+            continue  # disabled = stub, OK без файла
+        if pipe not in known_pipelines:
+            issues.append(Issue(
+                level="error",
+                path=str(profile_dir / "manifest.yaml"),
+                message=f"pipeline '{pipe}' не существует (нет commands/pipelines/{pipe}.md)",
+            ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -155,6 +181,7 @@ def main(argv: list[str]) -> int:
 
     repo_root = Path.cwd()  # запуск из корня репо
     known_roles = collect_known_roles(repo_root)
+    known_pipelines = collect_known_pipelines(repo_root)
 
     issues: list[Issue] = []
     for pd in profile_dirs:
@@ -167,6 +194,7 @@ def main(argv: list[str]) -> int:
         if manifest is not None:
             issues.extend(check_m3_name_matches_dir(pd, manifest))
             issues.extend(check_m4_subagent_names(pd, manifest, known_roles))
+            issues.extend(check_m5_pipeline_names(pd, manifest, known_pipelines))
 
     if issues:
         print(format_issues(issues))

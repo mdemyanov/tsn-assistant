@@ -151,6 +151,43 @@ assert "M4 сообщение содержит unknownrole" "echo \"$OUT\" | gre
 cd "$REPO_ROOT"
 rm -rf "$TMP4"
 
+# ===== M5: pipelines существуют =====
+echo ""
+echo "==> M5: pipeline без commands/pipelines/<name>.md"
+TMP5="$(mktemp -d)"
+mkdir -p "$TMP5/docs/overlays/profiles/badpipe"
+mkdir -p "$TMP5/.claude/plugins/project/commands/pipelines"
+touch "$TMP5/.claude/plugins/project/commands/pipelines/known-pipe.md"
+cat > "$TMP5/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP5/docs/overlays/profiles/badpipe/manifest.yaml" <<'YAML'
+schema_version: 1
+name: badpipe
+description: pipeline doesn't exist
+status: stub
+subagents: { pm: core }
+pipelines:
+  known-pipe: enabled
+  unknown-pipe: enabled
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP5"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badpipe 2>&1)
+RC=$?
+set -e
+assert "M5 exit 1 при unknown pipeline" "[ \"$RC\" = '1' ]"
+assert "M5 содержит unknown-pipe" "echo \"$OUT\" | grep -q 'unknown-pipe'"
+cd "$REPO_ROOT"
+rm -rf "$TMP5"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

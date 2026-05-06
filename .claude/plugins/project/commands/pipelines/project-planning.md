@@ -91,7 +91,7 @@ git push origin epic-$ARGUMENTS
 # открыть PR `epic-$ARGUMENTS` → `private`
 ```
 
-После merge `private` → `private` (через PM-review) → `public`.
+После merge в `private` → (через PM-review) → `public`.
 
 ## Pipeline-state tracking
 

@@ -49,6 +49,9 @@ REQUIRED_FIELDS = [
     "compatible_stacks",
 ]
 
+SUBAGENT_STATUSES = {"core", "optional", "disabled"}
+PIPELINE_STATUSES = {"enabled", "optional", "disabled"}
+
 
 def load_manifest(profile_dir: Path) -> dict | None:
     """Возвращает распарсенный manifest или None."""
@@ -155,6 +158,31 @@ def check_m5_pipeline_names(profile_dir: Path, manifest: dict, known_pipelines: 
     return issues
 
 
+def check_m6_status_enums(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """M6: статусы subagents и pipelines — из enum'а."""
+    issues = []
+    manifest_path = str(profile_dir / "manifest.yaml")
+    subagents = manifest.get("subagents") or {}
+    if isinstance(subagents, dict):
+        for role, status in subagents.items():
+            if status not in SUBAGENT_STATUSES:
+                issues.append(Issue(
+                    level="error",
+                    path=manifest_path,
+                    message=f"subagents.{role} = '{status}' (ожидается одно из {sorted(SUBAGENT_STATUSES)})",
+                ))
+    pipelines = manifest.get("pipelines") or {}
+    if isinstance(pipelines, dict):
+        for pipe, status in pipelines.items():
+            if status not in PIPELINE_STATUSES:
+                issues.append(Issue(
+                    level="error",
+                    path=manifest_path,
+                    message=f"pipelines.{pipe} = '{status}' (ожидается одно из {sorted(PIPELINE_STATUSES)})",
+                ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -195,6 +223,7 @@ def main(argv: list[str]) -> int:
             issues.extend(check_m3_name_matches_dir(pd, manifest))
             issues.extend(check_m4_subagent_names(pd, manifest, known_roles))
             issues.extend(check_m5_pipeline_names(pd, manifest, known_pipelines))
+            issues.extend(check_m6_status_enums(pd, manifest))
 
     if issues:
         print(format_issues(issues))

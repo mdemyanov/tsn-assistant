@@ -188,6 +188,40 @@ assert "M5 содержит unknown-pipe" "echo \"$OUT\" | grep -q 'unknown-pipe
 cd "$REPO_ROOT"
 rm -rf "$TMP5"
 
+# ===== M6: enum status =====
+echo ""
+echo "==> M6: subagents.X не из enum"
+TMP6="$(mktemp -d)"
+mkdir -p "$TMP6/docs/overlays/profiles/badenum"
+cat > "$TMP6/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP6/docs/overlays/profiles/badenum/manifest.yaml" <<'YAML'
+schema_version: 1
+name: badenum
+description: bad enum
+status: stub
+subagents:
+  pm: active
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP6"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badenum 2>&1)
+RC=$?
+set -e
+assert "M6 exit 1 при невалидном enum" "[ \"$RC\" = '1' ]"
+assert "M6 содержит 'active'" "echo \"$OUT\" | grep -q 'active'"
+cd "$REPO_ROOT"
+rm -rf "$TMP6"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

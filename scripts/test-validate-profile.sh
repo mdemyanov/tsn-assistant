@@ -286,6 +286,121 @@ assert "M7 stub: exit 0 даже с placeholder paths" "[ \"$RC\" = '0' ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP7B"
 
+# ===== M8: on_value мутации валидны =====
+echo ""
+echo "==> M8: on_value targets unknown subagent"
+TMP8="$(mktemp -d)"
+mkdir -p "$TMP8/docs/overlays/profiles/m8test"
+cat > "$TMP8/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP8/docs/overlays/profiles/m8test/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m8test
+description: bad on_value
+status: stub
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+init_prompts:
+  - id: foo
+    prompt: "?"
+    type: enum
+    choices: [a]
+    default: a
+    on_value:
+      a:
+        subagents.unknown_role: core
+YAML
+cd "$TMP8"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m8test 2>&1)
+RC=$?
+set -e
+assert "M8 exit 0 (warning, не error)" "[ \"$RC\" = '0' ]"
+assert "M8 содержит warning + unknown_role" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -q 'unknown_role'"
+cd "$REPO_ROOT"
+rm -rf "$TMP8"
+
+# ===== M9: compatible_stacks несуществующие =====
+echo ""
+echo "==> M9: compatible_stacks с несуществующим overlay"
+TMP9="$(mktemp -d)"
+mkdir -p "$TMP9/docs/overlays/profiles/m9test"
+mkdir -p "$TMP9/docs/overlays/known-stack"
+cat > "$TMP9/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP9/docs/overlays/profiles/m9test/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m9test
+description: unknown stack
+status: stub
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: [known-stack, unknown-stack]
+YAML
+cd "$TMP9"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m9test 2>&1)
+RC=$?
+set -e
+assert "M9 exit 0 (warning)" "[ \"$RC\" = '0' ]"
+assert "M9 warning про unknown-stack" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -q 'unknown-stack'"
+cd "$REPO_ROOT"
+rm -rf "$TMP9"
+
+# ===== M10: status mismatch =====
+echo ""
+echo "==> M10: status: stable + пустой scaffold"
+TMP10="$(mktemp -d)"
+mkdir -p "$TMP10/docs/overlays/profiles/m10test"
+mkdir -p "$TMP10/docs/overlays/profiles/m10test/empty-scaffold"
+cat > "$TMP10/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP10/docs/overlays/profiles/m10test/empty-doc-root.yaml" <<'YAML'
+title: t
+properties: []
+filterProperties: []
+YAML
+cat > "$TMP10/docs/overlays/profiles/m10test/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m10test
+description: stable but empty
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: empty-scaffold/
+doc_root: empty-doc-root.yaml
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP10"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m10test 2>&1)
+RC=$?
+set -e
+assert "M10 exit 0 (warning)" "[ \"$RC\" = '0' ]"
+assert "M10 warning про stable + empty" "echo \"$OUT\" | grep -q 'warning' && echo \"$OUT\" | grep -qE 'stable|empty'"
+cd "$REPO_ROOT"
+rm -rf "$TMP10"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

@@ -203,6 +203,88 @@ def check_m7_paths_exist(profile_dir: Path, manifest: dict) -> list[Issue]:
     return issues
 
 
+def check_m8_on_value_targets(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """M8 (warning): on_value мутации указывают на существующие ключи манифеста."""
+    issues = []
+    manifest_path = str(profile_dir / "manifest.yaml")
+    subagents = manifest.get("subagents") or {}
+    pipelines = manifest.get("pipelines") or {}
+    init_prompts = manifest.get("init_prompts") or []
+    if not isinstance(init_prompts, list):
+        return []
+    for p in init_prompts:
+        if not isinstance(p, dict):
+            continue
+        on_value = p.get("on_value") or {}
+        if not isinstance(on_value, dict):
+            continue
+        for choice, mutations in on_value.items():
+            if not isinstance(mutations, dict):
+                continue
+            for key in mutations:
+                if "." not in key:
+                    continue
+                section, name = key.split(".", 1)
+                if section == "subagents" and name not in subagents:
+                    issues.append(Issue(
+                        level="warning",
+                        path=manifest_path,
+                        message=f"init_prompts.{p.get('id', '?')}.on_value.{choice}: '{key}' мутирует unknown subagent '{name}'",
+                    ))
+                elif section == "pipelines" and name not in pipelines:
+                    issues.append(Issue(
+                        level="warning",
+                        path=manifest_path,
+                        message=f"init_prompts.{p.get('id', '?')}.on_value.{choice}: '{key}' мутирует unknown pipeline '{name}'",
+                    ))
+    return issues
+
+
+def check_m9_compatible_stacks(profile_dir: Path, manifest: dict, repo_root: Path) -> list[Issue]:
+    """M9 (warning): compatible_stacks упоминают существующие overlay'и."""
+    stacks = manifest.get("compatible_stacks") or []
+    if not isinstance(stacks, list):
+        return []
+    issues = []
+    overlays_root = repo_root / "docs" / "overlays"
+    manifest_path = str(profile_dir / "manifest.yaml")
+    for s in stacks:
+        if s == "*":
+            continue
+        if not (overlays_root / s).is_dir():
+            issues.append(Issue(
+                level="warning",
+                path=manifest_path,
+                message=f"compatible_stacks: '{s}' не существует ({overlays_root}/{s} не найдена)",
+            ))
+    return issues
+
+
+def check_m10_status_mismatch(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """M10 (warning): status: stable + пустой content_scaffold ИЛИ status: stub + непустой."""
+    status = manifest.get("status")
+    scaffold = manifest.get("content_scaffold")
+    if not scaffold or scaffold == "./":
+        scaffold_empty = True
+    else:
+        target = profile_dir / scaffold
+        scaffold_empty = not target.is_dir() or not any(target.iterdir())
+    manifest_path = str(profile_dir / "manifest.yaml")
+    if status == "stable" and scaffold_empty:
+        return [Issue(
+            level="warning",
+            path=manifest_path,
+            message=f"status: stable, но content_scaffold пустой — несоответствие",
+        )]
+    if status == "stub" and not scaffold_empty:
+        return [Issue(
+            level="warning",
+            path=manifest_path,
+            message=f"status: stub, но content_scaffold непустой — возможно status должен быть stable",
+        )]
+    return []
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -245,6 +327,9 @@ def main(argv: list[str]) -> int:
             issues.extend(check_m5_pipeline_names(pd, manifest, known_pipelines))
             issues.extend(check_m6_status_enums(pd, manifest))
             issues.extend(check_m7_paths_exist(pd, manifest))
+            issues.extend(check_m8_on_value_targets(pd, manifest))
+            issues.extend(check_m9_compatible_stacks(pd, manifest, repo_root))
+            issues.extend(check_m10_status_mismatch(pd, manifest))
 
     if issues:
         print(format_issues(issues))

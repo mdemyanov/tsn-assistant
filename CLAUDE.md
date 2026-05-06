@@ -57,6 +57,50 @@
 3. В `.claude/plugins/<new-name>/.claude-plugin/plugin.json` поменяй `name`.
 4. В `.claude/settings.json` поменяй ключ в `enabledPlugins`: `project@local` → `<new-name>@local`.
 
+## Профильная система (Wave 2)
+
+Шаблон поддерживает 7 **профилей** (тип проекта). Профиль выбирается на `/init` и определяет:
+
+- структуру `content/` (scaffold)
+- набор properties в `.doc-root.yaml`
+- активные subagents (core / optional / disabled)
+- активные pipelines
+
+| Профиль | Назначение | Статус |
+|---------|------------|--------|
+| `project` | Delivery-проект (default) | stable |
+| `kb-team` | Internal team KB (onboarding/runbook/role/incident) | stable |
+| `product` | Разработка продукта | stub (Wave 3+) |
+| `kb-product` | Документация продукта для клиентов | stub |
+| `methodology` | Methodology / playbook | stub |
+| `course` | Обучающий курс | stub |
+| `custom` | Open-ended | stub |
+
+### Команды
+
+- `bash scripts/init.sh --profile <name> ...` — выбрать профиль на init (по умолчанию интерактивный fallback)
+- `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций
+- `python3 scripts/validate-profile.py` — валидация manifest'ов
+
+### Файлы
+
+- `docs/overlays/profiles/<name>/manifest.yaml` — декларация профиля
+- `docs/overlays/profiles/<name>/content-scaffold/` — content scaffold
+- `docs/overlays/profiles/<name>/doc-root.yaml` — шаблон `.doc-root.yaml`
+- `.claude/plugins/project/agents/<role>-agent.md` — base prompts; per-profile overrides в `profiles/<name>/agent-overrides/<role>.md` (Wave 3)
+
+### Каталог 10 ролей
+
+PM (main, Opus) + 9 subagent'ов (Sonnet): researcher, ba, sa, dev, devops, qa (author/runner), tech-writer, devsecops, compliance.
+
+### 3 pipeline'а
+
+- `/pipelines/project-planning <epic>` — декомпозиция эпика
+- `/pipelines/ba-acceptance <req>` — gate AC ↔ реализация
+- `/pipelines/critical-path <epic>` — DAG + mermaid Gantt
+
+См. `AGENTS.md` (полный реестр 10 ролей) и `docs/extending.md` (как добавить роль/pipeline/профиль).
+
 ## Правила Gramax-каталога (`content/`)
 
 - **`_index.md` в каждой подпапке** (где есть `.md` файлы или вложенные подкаталоги). Без него Gramax не показывает раздел в навигации.

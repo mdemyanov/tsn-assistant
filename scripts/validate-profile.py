@@ -183,6 +183,26 @@ def check_m6_status_enums(profile_dir: Path, manifest: dict) -> list[Issue]:
     return issues
 
 
+def check_m7_paths_exist(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """M7: content_scaffold и doc_root paths существуют (для status != stub)."""
+    if manifest.get("status") == "stub":
+        return []  # для stub'ов не проверяем
+    issues = []
+    manifest_path = str(profile_dir / "manifest.yaml")
+    for field in ["content_scaffold", "doc_root"]:
+        path_str = manifest.get(field)
+        if not path_str or path_str == "./":
+            continue  # ./ — допустимый плейсхолдер для stub'ов
+        target = profile_dir / path_str
+        if not target.exists():
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=f"{field} '{path_str}' не существует (искал: {target})",
+            ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -224,6 +244,7 @@ def main(argv: list[str]) -> int:
             issues.extend(check_m4_subagent_names(pd, manifest, known_roles))
             issues.extend(check_m5_pipeline_names(pd, manifest, known_pipelines))
             issues.extend(check_m6_status_enums(pd, manifest))
+            issues.extend(check_m7_paths_exist(pd, manifest))
 
     if issues:
         print(format_issues(issues))

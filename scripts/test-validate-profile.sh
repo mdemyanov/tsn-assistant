@@ -222,6 +222,70 @@ assert "M6 содержит 'active'" "echo \"$OUT\" | grep -q 'active'"
 cd "$REPO_ROOT"
 rm -rf "$TMP6"
 
+# ===== M7: paths существуют =====
+echo ""
+echo "==> M7: content_scaffold path missing"
+TMP7="$(mktemp -d)"
+mkdir -p "$TMP7/docs/overlays/profiles/badpath"
+cat > "$TMP7/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP7/docs/overlays/profiles/badpath/manifest.yaml" <<'YAML'
+schema_version: 1
+name: badpath
+description: missing scaffold dir
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: nonexistent/
+doc_root: nonexistent.yaml
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP7"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badpath 2>&1)
+RC=$?
+set -e
+assert "M7 exit 1 при missing path (status: stable)" "[ \"$RC\" = '1' ]"
+assert "M7 содержит content_scaffold" "echo \"$OUT\" | grep -q 'content_scaffold'"
+cd "$REPO_ROOT"
+rm -rf "$TMP7"
+
+# stub-профиль с missing path — НЕ error (stub'ы могут иметь пустые paths)
+echo "==> M7: stub-профиль с пустым path — OK"
+TMP7B="$(mktemp -d)"
+mkdir -p "$TMP7B/docs/overlays/profiles/stubok"
+cat > "$TMP7B/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP7B/docs/overlays/profiles/stubok/manifest.yaml" <<'YAML'
+schema_version: 1
+name: stubok
+description: stub
+status: stub
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP7B"
+set +e
+python3 "$VALIDATOR" docs/overlays/profiles/stubok >/dev/null 2>&1
+RC=$?
+set -e
+assert "M7 stub: exit 0 даже с placeholder paths" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP7B"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

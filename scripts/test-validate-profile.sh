@@ -401,6 +401,34 @@ assert "M10 warning про stable + empty" "echo \"$OUT\" | grep -q 'warning' &&
 cd "$REPO_ROOT"
 rm -rf "$TMP10"
 
+# ===== M0: malformed YAML =====
+echo ""
+echo "==> M0: невалидный YAML в manifest"
+TMP_BAD=$(mktemp -d)
+mkdir -p "$TMP_BAD/docs/overlays/profiles/badyaml"
+cat > "$TMP_BAD/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+# Невалидный YAML — unterminated string
+cat > "$TMP_BAD/docs/overlays/profiles/badyaml/manifest.yaml" <<'YAML'
+schema_version: 1
+name: badyaml
+description: "unterminated string
+status: stub
+YAML
+cd "$TMP_BAD"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badyaml 2>&1)
+RC=$?
+set -e
+assert "M0 exit 1 при невалидном YAML" "[ \"$RC\" = '1' ]"
+assert "M0 содержит 'not valid YAML'" "echo \"$OUT\" | grep -q 'not valid YAML'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_BAD"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

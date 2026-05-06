@@ -90,7 +90,7 @@ replace_in_file() {
   fi
 }
 
-for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml; do
+for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml content/_index.md; do
   replace_in_file "$f" '{{PROJECT_NAME}}'        "$NAME"
   replace_in_file "$f" '{{PROJECT_CODE}}'        "$CODE"
   replace_in_file "$f" '{{PROJECT_DESCRIPTION}}' "$DESCRIPTION"

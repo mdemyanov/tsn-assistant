@@ -1,0 +1,25 @@
+schema_version: 1
+name: product
+description: Разработка продукта/модуля (vision → spec → ADR → реализация → release)
+status: stub
+subagents:
+  pm: core
+  ba: core
+  sa: core
+  dev: core
+  qa: core
+  tech-writer: core
+  researcher: optional
+  devops: optional
+  devsecops: optional
+  compliance: optional
+pipelines:
+  project-planning: optional
+  ba-acceptance: optional
+  critical-path: disabled
+  scrum-agile: disabled
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: ["*"]
+maintainer: project_template

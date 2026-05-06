@@ -1,0 +1,15 @@
+schema_version: 1
+name: course
+description: Обучающий курс (модули → lessons → assessments)
+status: stub
+subagents:
+  pm: core
+  tech-writer: core
+  ba: optional
+  researcher: optional
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+maintainer: project_template

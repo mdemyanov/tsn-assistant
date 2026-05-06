@@ -154,13 +154,14 @@ if [[ -n "$PROFILE" ]]; then
     exit 1
   fi
 
-  # После применения профиля — заново подставить плейсхолдеры в новых файлах из scaffold
-  for f in CLAUDE.md AGENTS.md README.md content/.doc-root.yaml content/_index.md $(find content -name '_index.md' 2>/dev/null); do
+  # Post-overlay: scaffold may have brought in fresh files with placeholders — substitute in content/ only
+  while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
     replace_in_file "$f" '{{PROJECT_NAME}}'        "$NAME"
     replace_in_file "$f" '{{PROJECT_CODE}}'        "$CODE"
     replace_in_file "$f" '{{PROJECT_DESCRIPTION}}' "$DESCRIPTION"
     replace_in_file "$f" '{{EDITOR_EMAIL}}'        "$EDITOR_EMAIL"
-  done
+  done < <(find content -name '*.md' -o -name '*.yaml' 2>/dev/null)
 
   # Опц. stack-overlay'и из compatible_stacks
   COMPAT_STACKS=$(python3 -c "

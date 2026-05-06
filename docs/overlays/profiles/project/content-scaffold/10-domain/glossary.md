@@ -4,8 +4,6 @@ title: Глоссарий
 properties:
   - name: Тип контента
     value: [Глоссарий]
-  - name: Фаза
-    value: [MVP]
   - name: Статус
     value: [Draft]
 ---

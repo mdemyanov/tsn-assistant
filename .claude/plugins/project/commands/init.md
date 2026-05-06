@@ -37,6 +37,55 @@ git log --oneline -10
 
 Жди подтверждения. На отрицательный ответ или невнятный — остановись и предложи сначала сделать `git clone` шаблона второй копией как backup.
 
+### Шаг 0.7. Выбор профиля (Wave 2)
+
+Шаблон поддерживает несколько профилей (тип проекта). Профиль определяет:
+- структуру `content/` (scaffold)
+- набор properties в `.doc-root.yaml`
+- активные subagents (core / optional / disabled) и pipelines
+
+Покажи доступные профили:
+
+```bash
+ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
+```
+
+Спроси у пользователя: «Выбери профиль (default: `project`):»
+
+| Профиль | Назначение | Status |
+|---------|------------|--------|
+| `project` | Delivery-проект (default) — Researcher → BA → SA → Dev → DevOps цепочка | stable |
+| `kb-team` | Internal team KB (onboarding/runbook/role/incident) | stable |
+| `product` | Разработка продукта/модуля | stub (Wave 3+) |
+| `kb-product` | Документация продукта для клиентов | stub |
+| `methodology` | Методология / playbook | stub |
+| `course` | Обучающий курс | stub |
+| `custom` | Open-ended (research-каталог, личный wiki) | stub |
+
+Если пользователь выбрал stub-профиль — предупреди, что scaffold ещё не готов; предложи alternative (`project` для большинства случаев) или продолжить с stub'ом (тогда content/ будет минимальным после init).
+
+Сохрани выбор в переменную `$PROFILE`.
+
+### Шаг 0.8. Динамические init_prompts профиля
+
+После выбора профиля прочитай его манифест:
+
+```bash
+cat docs/overlays/profiles/$PROFILE/manifest.yaml
+```
+
+Если в манифесте есть `init_prompts:` — задай каждый вопрос пользователю по очереди:
+- Тип `enum` — покажи `choices`, default помечен; ответ должен быть из списка
+- Тип `string` — свободный текстовый ввод
+- Тип `bool` — y/n
+
+Сохрани ответы в `INIT_PROMPT_<id>` env-переменных. Они передадутся в `apply-overlay.sh` (через bash-init после T40), который применит `on_value` мутации к manifest in-memory.
+
+**Пример (для project профиля):**
+- `compliance_domain` (enum): «Проект под compliance-надзором?» — choices: `none`, `152-fz`, `iso27001`, `other`. Если ответ ≠ `none`, manifest добавит `subagents.compliance: core` (через on_value).
+
+Если `init_prompts: []` или отсутствует — пропусти этот шаг.
+
 ### Фаза 1. Запуск механики
 
 1. **Собери параметры** (если не переданы в `$ARGUMENTS`, спроси по очереди):
@@ -46,16 +95,20 @@ git log --oneline -10
    - `EDITOR_EMAIL` — email редактора Gramax (минимум один; добавить остальных можно потом руками)
    - `GIT_REMOTE_URL` — URL нового origin. **Не должен** содержать `project-template` / `project_template`. Если у пользователя ещё нет URL — оставь пустым (init.sh пропустит origin и предупредит).
 
-2. **Запусти `scripts/init.sh`:**
+2. **Запусти `scripts/init.sh`** (после T40 поддерживает `--profile` и dynamic init_prompts):
    ```bash
-   bash scripts/init.sh "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
+   bash scripts/init.sh --profile "$PROFILE" "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
    ```
    Скрипт:
-   - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`;
-   - wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`;
-   - создаст ветку `private`;
-   - опционально `git remote add origin <url>`;
-   - скопирует `.env.example` → `.env`.
+   - читает `docs/overlays/profiles/$PROFILE/manifest.yaml`
+   - применяет `INIT_PROMPT_*` env-переменные через `on_value` мутации
+   - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`
+   - вызовет `apply-overlay.sh --profile --init <profile>` для применения операций (add/replace/delete)
+   - опц. предложит применить совместимые stack-overlay'и (`compatible_stacks` из manifest'а)
+   - wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`
+   - создаст ветку `private`
+   - опционально `git remote add origin <url>`
+   - скопирует `.env.example` → `.env`
 
 3. **Верифицируй:**
    - `grep -RE '{{(PROJECT_(NAME|CODE|DESCRIPTION)|EDITOR_EMAIL)}}' CLAUDE.md AGENTS.md README.md content/.doc-root.yaml` — пусто.
@@ -63,6 +116,9 @@ git log --oneline -10
    - `git remote -v` — либо origin задан, либо пусто.
    - `git branch -a` — есть `main` и `private`.
    - `python3 scripts/validate-content.py` — exit 0 (warnings допустимы; errors — блокер).
+   - `python3 scripts/validate-profile.py` — exit 0 (warnings допустимы; M5 errors про pipelines резолвятся после T39)
+   - `[ -f docs/overlays/profiles/$PROFILE/manifest.yaml ]` — true
+   - Профиль-специфичный scaffold применён (для `kb-team` это `content/30-runbooks/`; для `project` — `content/00-project/plans/`)
 
 ### Фаза 2. Интервью по 6 темам
 

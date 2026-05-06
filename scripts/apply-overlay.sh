@@ -205,6 +205,78 @@ op_replace() {
   echo "  ✓ replaced"
 }
 
+# Проверяет, что target можно удалить безопасно (только baseline content)
+is_safe_to_delete() {
+  local target="$1"
+  [[ ! -e "$target" ]] && return 0  # уже нет — OK
+
+  if [[ -f "$target" ]]; then
+    # Файл: безопасно если плейсхолдер или пустой
+    [[ ! -s "$target" ]] && return 0  # empty file
+    grep -q '{{' "$target" && return 0  # placeholder
+    return 1
+  fi
+
+  if [[ -d "$target" ]]; then
+    # Папка: безопасно если содержит только _index.md (с placeholder/baseline) и .gitkeep
+    local f
+    while IFS= read -r f; do
+      local base
+      base=$(basename "$f")
+      [[ "$base" == ".gitkeep" ]] && continue
+      [[ "$base" == "_index.md" ]] && {
+        # _index.md baseline — без content вне frontmatter
+        # heuristic: если файл < 500 байт ИЛИ содержит {{ — baseline
+        [[ ! -s "$f" || $(stat -f%z "$f" 2>/dev/null || stat -c%s "$f") -lt 500 ]] && continue
+        grep -q '{{' "$f" && continue
+        return 1  # _index.md содержательный
+      }
+      return 1  # любой другой файл = non-baseline
+    done < <(find "$target" -type f)
+    return 0
+  fi
+
+  return 1
+}
+
+op_delete() {
+  local target="$1" reason="$2"
+
+  echo "[DELETE] $target  ($reason)"
+
+  [[ ! -e "$target" ]] && {
+    echo "  ✓ already absent"
+    return 0
+  }
+
+  if [[ "$FORCE" -eq 1 ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "  [DRY-RUN] would force-delete (force=1)"
+      return 0
+    fi
+    rm -rf "$target"
+    echo "  ✓ force-deleted"
+    return 0
+  fi
+
+  if is_safe_to_delete "$target"; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "  [DRY-RUN] safe to delete"
+      return 0
+    fi
+    rm -rf "$target"
+    echo "  ✓ deleted (was baseline/empty)"
+  else
+    echo "  ⚠ REFUSED: $target содержит non-baseline content"
+    echo "    Use --force to override; use --dry-run to preview"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "  [DRY-RUN] WOULD REFUSE"
+      return 0
+    fi
+    exit 1
+  fi
+}
+
 apply_profile_overlay() {
   local name="$1"
   local profile_dir="$PROFILES_ROOT/$name"

@@ -240,6 +240,84 @@ assert "T-OP-REPLACE: file replaced" "grep -q 'new' content/file.txt"
 cd "$REPO_ROOT"
 rm -rf "$TMP_REP"
 
+# ===== T-OP-DELETE: пустая папка удаляется =====
+echo ""
+echo "==> T-OP-DELETE: пустая папка удаляется"
+TMP_DEL=$(mktemp -d)
+mkdir -p "$TMP_DEL/docs/overlays/profiles/test-del" "$TMP_DEL/content/empty-dir" "$TMP_DEL/.claude/plugins/project/commands/pipelines" "$TMP_DEL/scripts"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_DEL/scripts/"
+chmod +x "$TMP_DEL/scripts/apply-overlay.sh" "$TMP_DEL/scripts/validate-profile.py"
+cat > "$TMP_DEL/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP_DEL/docs/overlays/profiles/test-del/manifest.yaml" <<'YAML'
+schema_version: 1
+name: test-del
+description: delete test
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations:
+  - op: delete
+    target: content/empty-dir/
+    reason: "T-OP-DELETE empty"
+compatible_stacks: []
+YAML
+cd "$TMP_DEL"
+bash scripts/apply-overlay.sh --profile --init test-del >/dev/null 2>&1
+assert "T-OP-DELETE: empty dir удалена" "[ ! -d content/empty-dir ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_DEL"
+
+# ===== T-OP-DELETE-STRICT: non-empty refuse без --force =====
+echo "==> T-OP-DELETE-STRICT: non-empty refuse без --force"
+TMP_DELS=$(mktemp -d)
+mkdir -p "$TMP_DELS/docs/overlays/profiles/test-dels" "$TMP_DELS/content/full-dir" "$TMP_DELS/.claude/plugins/project/commands/pipelines" "$TMP_DELS/scripts"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_DELS/scripts/"
+chmod +x "$TMP_DELS/scripts/apply-overlay.sh" "$TMP_DELS/scripts/validate-profile.py"
+echo "real content here, much longer than 500 bytes — long article body that simulates a real piece of content the user has written and would not want to lose without confirmation. This text needs to be at least 500 characters long to bypass the size heuristic in is_safe_to_delete. Padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding." > "$TMP_DELS/content/full-dir/_index.md"
+echo "more real content" > "$TMP_DELS/content/full-dir/article.md"
+cat > "$TMP_DELS/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| pm | PM |
+MD
+cat > "$TMP_DELS/docs/overlays/profiles/test-dels/manifest.yaml" <<'YAML'
+schema_version: 1
+name: test-dels
+description: delete strict
+status: stable
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations:
+  - op: delete
+    target: content/full-dir/
+    reason: "T-OP-DELETE-STRICT"
+compatible_stacks: []
+YAML
+cd "$TMP_DELS"
+set +e
+bash scripts/apply-overlay.sh --profile test-dels >/dev/null 2>&1
+RC=$?
+set -e
+assert "T-OP-DELETE-STRICT: refuses без --force" "[ \"$RC\" != '0' ]"
+assert "T-OP-DELETE-STRICT: full-dir всё ещё там" "[ -d content/full-dir ]"
+
+# С --force
+bash scripts/apply-overlay.sh --profile --force test-dels >/dev/null 2>&1
+RC=$?
+assert "T-OP-DELETE-STRICT: --force удаляет" "[ ! -d content/full-dir ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_DELS"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

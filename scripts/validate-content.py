@@ -25,6 +25,34 @@ class Issue:
     message: str
 
 
+def parse_frontmatter(file_path: Path) -> dict | None:
+    """Извлекает YAML-frontmatter между --- из markdown-файла. Возвращает None если нет."""
+    text = file_path.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return None
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None
+    try:
+        return yaml.safe_load(parts[1]) or {}
+    except yaml.YAMLError:
+        return None
+
+
+def check_index_no_properties(content_dir: Path) -> list[Issue]:
+    """C2: _index.md не должен содержать properties:."""
+    issues = []
+    for index_path in content_dir.rglob("_index.md"):
+        fm = parse_frontmatter(index_path)
+        if fm and "properties" in fm:
+            issues.append(Issue(
+                level="error",
+                path=str(index_path),
+                message="_index.md не должен иметь properties (раздел не имеет своего типа/статуса)",
+            ))
+    return issues
+
+
 def check_indexes(content_dir: Path) -> list[Issue]:
     """C1: каждая подпапка с .md или вложенными .md содержит _index.md."""
     issues = []
@@ -56,6 +84,7 @@ def main(argv: list[str]) -> int:
 
     issues = []
     issues.extend(check_indexes(content_dir))
+    issues.extend(check_index_no_properties(content_dir))
 
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]

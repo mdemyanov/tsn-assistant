@@ -116,6 +116,34 @@ set -e
 assert "exit 0 для каталога с _index.md везде" "[ \"$RC\" = '0' ]"
 rm -rf "$TMP3"
 
+# ===== C2: _index.md не должен иметь properties: =====
+echo ""
+echo "==> C2: _index.md с properties: даёт error"
+TMP_C2="$(mktemp -d)"
+mkdir -p "$TMP_C2/content"
+cat > "$TMP_C2/content/.doc-root.yaml" <<'YAML'
+title: Test
+properties: []
+filterProperties: []
+YAML
+cat > "$TMP_C2/content/_index.md" <<'MD'
+---
+order: 0
+title: Root
+properties:
+  - name: Тип контента
+    value: [ADR]
+---
+MD
+
+set +e
+OUT=$(python3 "$VALIDATOR" "$TMP_C2/content" 2>&1)
+RC=$?
+set -e
+assert "C2 exit 1 при properties в _index.md" "[ \"$RC\" = '1' ]"
+assert "C2 сообщение про properties в _index.md" "echo \"$OUT\" | grep -q '_index.md не должен иметь properties'"
+rm -rf "$TMP_C2"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

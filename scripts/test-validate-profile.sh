@@ -86,6 +86,33 @@ assert "M2 упоминает subagents" "echo \"$OUT\" | grep -q 'subagents'"
 cd "$REPO_ROOT"
 rm -rf "$TMP2"
 
+# ===== M3: name совпадает с dir =====
+echo ""
+echo "==> M3: name != dir"
+TMP3="$(mktemp -d)"
+mkdir -p "$TMP3/docs/overlays/profiles/foo"
+cat > "$TMP3/docs/overlays/profiles/foo/manifest.yaml" <<'YAML'
+schema_version: 1
+name: bar
+description: name != dir
+status: stub
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+YAML
+cd "$TMP3"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/foo 2>&1)
+RC=$?
+set -e
+assert "M3 exit 1 при name != dir" "[ \"$RC\" = '1' ]"
+assert "M3 сообщение про name" "echo \"$OUT\" | grep -qE 'name.*foo|name.*bar|совпада'"
+cd "$REPO_ROOT"
+rm -rf "$TMP3"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

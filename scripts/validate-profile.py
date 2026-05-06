@@ -73,6 +73,20 @@ def check_m2_required_fields(profile_dir: Path, manifest: dict | None) -> list[I
     return issues
 
 
+def check_m3_name_matches_dir(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """M3: name в manifest совпадает с именем папки."""
+    name = manifest.get("name")
+    if name is None:
+        return []  # M2 уже сообщил
+    if name != profile_dir.name:
+        return [Issue(
+            level="error",
+            path=str(profile_dir / "manifest.yaml"),
+            message=f"name '{name}' не совпадает с именем папки '{profile_dir.name}'",
+        )]
+    return []
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -105,6 +119,8 @@ def main(argv: list[str]) -> int:
             continue  # без manifest нечего проверять
         manifest = load_manifest(pd)
         issues.extend(check_m2_required_fields(pd, manifest))
+        if manifest is not None:
+            issues.extend(check_m3_name_matches_dir(pd, manifest))
 
     if issues:
         print(format_issues(issues))

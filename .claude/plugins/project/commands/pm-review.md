@@ -10,9 +10,10 @@ allowed-tools: Read, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git sta
 1. **Незакоммиченные изменения:** `git status` — должен быть чистый.
 2. **Diff vs public:** `git diff public..private --name-only` — какие файлы пойдут в публикацию.
 3. **Целостность `content/`:**
-   - Все статьи в `content/` имеют обязательные properties (см. `content/.doc-root.yaml`)
-   - В новых ADR (`content/00-project/adr/`) — все ссылки на предшественников ведут на наполненные статьи (не болванки <100 байт)
-   - В новых требованиях (`content/30-requirements/`) — есть JTBD и Acceptance Criteria
+   - **Запусти валидатор:** `python3 scripts/validate-content.py`. Любой error — блокер merge. Warnings обозначь в отчёте.
+   - Все статьи в `content/` имеют обязательные properties (см. `content/.doc-root.yaml`).
+   - В новых ADR (`content/00-project/adr/`) — все ссылки на предшественников ведут на наполненные статьи (не болванки <100 байт).
+   - В новых требованиях (`content/30-requirements/`) — есть JTBD и Acceptance Criteria.
 4. **Lessons-learned:** прочитай `docs/lessons-learned.md` (свежие записи) и memory (через auto-memory). Предложи: какие фрагменты добавить в CLAUDE.md / промты агентов / глоссарий?
 
 ## Формат ответа

@@ -236,8 +236,12 @@ def main(argv: list[str]) -> int:
     errors = [i for i in issues if i.level == "error"]
     warnings = [i for i in issues if i.level == "warning"]
 
-    for issue in issues:
+    for issue in sorted(issues, key=lambda i: (i.path, i.level)):
         print(f"{issue.path}: {issue.message}  [{issue.level}]")
+
+    md_count = sum(1 for _ in content_dir.rglob("*.md"))
+    if not issues:
+        print(f"{content_dir}/: OK ({md_count} файлов проверены)")
 
     print(f"\nErrors: {len(errors)} | Warnings: {len(warnings)}")
     return 1 if errors else 0

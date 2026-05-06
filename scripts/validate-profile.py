@@ -23,6 +23,18 @@ from _validate_common import (  # noqa: E402
 PROFILES_ROOT_DEFAULT = Path("docs/overlays/profiles")
 
 
+def check_m1_manifest_present(profile_dir: Path) -> list[Issue]:
+    """M1: профиль содержит manifest.yaml."""
+    manifest_path = profile_dir / "manifest.yaml"
+    if not manifest_path.exists():
+        return [Issue(
+            level="error",
+            path=str(profile_dir) + "/",
+            message="manifest.yaml not found",
+        )]
+    return []
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -48,7 +60,8 @@ def main(argv: list[str]) -> int:
         return 0
 
     issues: list[Issue] = []
-    # M1-M10 будут добавлены в следующих задачах
+    for pd in profile_dirs:
+        issues.extend(check_m1_manifest_present(pd))
 
     if issues:
         print(format_issues(issues))

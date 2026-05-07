@@ -91,16 +91,27 @@ def check_m3_name_matches_dir(profile_dir: Path, manifest: dict) -> list[Issue]:
     return []
 
 
-def collect_known_roles(repo_root: Path) -> set[str]:
-    """Парсит AGENTS.md таблицу 'Каталог ролей', возвращает множество role names."""
+def collect_known_roles(repo_root: Path) -> tuple[set[str], list[Issue]]:
+    """Парсит AGENTS.md таблицу 'Каталог ролей'.
+
+    Returns (roles, issues). Issues содержит warning если AGENTS.md exists,
+    но '## Каталог ролей' heading не парсится — это сигнал поломанного anchor'а
+    (M4 silently skipping — раньше было).
+    """
     agents_md = repo_root / "AGENTS.md"
+    issues: list[Issue] = []
     if not agents_md.exists():
-        return set()
+        return set(), issues  # M4 skipped silently — это OK, AGENTS.md просто нет
     text = agents_md.read_text(encoding="utf-8")
-    # Найти секцию '## Каталог ролей' и таблицу под ней
     match = _re.search(r"##\s*Каталог ролей\s*\n(.*?)(?=\n##|\Z)", text, _re.DOTALL)
     if not match:
-        return set()
+        # A3: эмит warning — heading anchor сломан, M4 не работает
+        issues.append(Issue(
+            level="warning",
+            path=str(agents_md),
+            message="AGENTS.md exists, но '## Каталог ролей' heading не найден; M4 (subagent name validation) skipped",
+        ))
+        return set(), issues
     table = match.group(1)
     roles = set()
     for line in table.splitlines():
@@ -111,7 +122,14 @@ def collect_known_roles(repo_root: Path) -> set[str]:
         if not cells or cells[0].lower() in ("имя", "name"):
             continue
         roles.add(cells[0])
-    return roles
+    if not roles:
+        # Heading нашёлся но table пустая — это тоже сигнал
+        issues.append(Issue(
+            level="warning",
+            path=str(agents_md),
+            message="'## Каталог ролей' heading найден, но table пуст или не парсится; M4 skipped",
+        ))
+    return roles, issues
 
 
 def check_m4_subagent_names(profile_dir: Path, manifest: dict, known_roles: set[str]) -> list[Issue]:
@@ -310,10 +328,10 @@ def main(argv: list[str]) -> int:
         return 0
 
     repo_root = Path.cwd()  # запуск из корня репо
-    known_roles = collect_known_roles(repo_root)
-    known_pipelines = collect_known_pipelines(repo_root)
-
     issues: list[Issue] = []
+    known_roles, m4_issues = collect_known_roles(repo_root)
+    issues.extend(m4_issues)
+    known_pipelines = collect_known_pipelines(repo_root)
     for pd in profile_dirs:
         m1 = check_m1_manifest_present(pd)
         issues.extend(m1)

@@ -429,6 +429,22 @@ assert "M0 содержит 'not valid YAML'" "echo \"$OUT\" | grep -q 'not vali
 cd "$REPO_ROOT"
 rm -rf "$TMP_BAD"
 
+# ===== T-W3-A3-M4-VISIBILITY: broken AGENTS.md heading → warning =====
+echo ""
+echo "==> T-W3-A3-M4-VISIBILITY"
+TMP_M4V=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_M4V/"
+cd "$TMP_M4V"
+sed -i.bak 's/## Каталог ролей/## Catalog of roles/' AGENTS.md && rm -f AGENTS.md.bak
+set +e
+OUT=$(python3 scripts/validate-profile.py 2>&1)
+RC=$?
+set -e
+assert "T-W3-A3: warning emit при broken heading" "echo \"$OUT\" | grep -q \"M4 (subagent name validation) skipped\""
+assert "T-W3-A3: exit 0 (warning не error)" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M4V"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

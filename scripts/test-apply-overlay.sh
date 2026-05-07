@@ -18,6 +18,11 @@ rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP/"
 cd "$TMP"
 GIT_TEST="git -c user.email=test@example.com -c user.name=test"
 git init -q -b main
+# W4b-T2-test-fix: post-W4b baseline content/ минимизирован (только _index.md + .doc-root.yaml).
+# Marker-overlay тесты ниже ожидают glossary.md в content/10-domain/ — копируем из project
+# content-scaffold (то, что юзер получает после init project-профиля).
+mkdir -p content/10-domain
+cp docs/overlays/profiles/project/content-scaffold/10-domain/glossary.md content/10-domain/glossary.md
 git add -A
 $GIT_TEST commit -q -m "test baseline"
 

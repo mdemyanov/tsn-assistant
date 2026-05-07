@@ -366,6 +366,37 @@ assert "T-LEGACY: project scaffold применён" "[ -d content/00-project/pl
 cd "$REPO_ROOT"
 rm -rf "$TMP_LEG"
 
+# ===== T-W3-F4: scripts/check.sh =====
+echo ""
+echo "==> T-W3-F4: scripts/check.sh"
+TMP_F4=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_F4/"
+cd "$TMP_F4"
+git init -q -b main && git add -A && git -c user.email=t@x -c user.name=t commit -q -m baseline
+
+# T-W3-F4-fast: --fast exit 0
+bash scripts/check.sh --fast >/dev/null 2>&1
+RC=$?
+assert "T-W3-F4-fast: --fast exit 0" "[ \"$RC\" = '0' ]"
+
+# T-W3-F4-help: --help exit 0
+bash scripts/check.sh --help >/dev/null 2>&1
+RC=$?
+assert "T-W3-F4-help: --help exit 0" "[ \"$RC\" = '0' ]"
+
+# T-W3-F4-invalid: --invalid exit 2
+set +e
+bash scripts/check.sh --invalid >/dev/null 2>&1
+RC=$?
+set -e
+assert "T-W3-F4-invalid: --invalid exit 2" "[ \"$RC\" = '2' ]"
+
+# Note: --full запускает test-template.sh recursively; не запускаем здесь
+# чтобы избежать infinite loop. Smoke --full делает Phase 6 / T21.
+
+cd "$REPO_ROOT"
+rm -rf "$TMP_F4"
+
 # ===== T-W3-A1: on_value mutation end-to-end =====
 echo ""
 echo "==> T-W3-A1: on_value mutation (compliance_domain=152-fz → subagents.compliance: core)"

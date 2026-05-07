@@ -215,6 +215,7 @@ def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
     return {
         "profile": manifest.get("name", ""),
         "init": init,
+        "ops_count": len(plan_ops),
         "ops": plan_ops,
     }
 

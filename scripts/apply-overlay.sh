@@ -319,10 +319,12 @@ apply_profile_overlay() {
   fi
 
   # A2: один вызов helper'а — JSON plan на stdout
-  local init_flag=""
-  [[ "$INIT_MODE" -eq 1 ]] && init_flag="--init"
+  # W4a-T2: array вместо unquoted string (SC2086 + safety при пробелах).
+  # Pattern "${arr[@]+"${arr[@]}"}" безопасен для пустого массива под set -u.
+  local init_args=()
+  [[ "$INIT_MODE" -eq 1 ]] && init_args+=("--init")
   local plan_json
-  if ! plan_json=$(python3 scripts/_apply_profile.py "$profile_dir" $init_flag); then
+  if ! plan_json=$(python3 scripts/_apply_profile.py "$profile_dir" ${init_args[@]+"${init_args[@]}"}); then
     echo "ERROR: _apply_profile.py упал на $name" >&2
     exit 1
   fi
@@ -336,9 +338,9 @@ apply_profile_overlay() {
     echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
   fi
 
-  # Распарсить plan и подсчитать ops
+  # W4a-T2: ops_count emit'ится helper'ом в JSON top-level — без дополнительного python invocation
   local ops_count
-  ops_count=$(echo "$plan_json" | python3 -c "import json, sys; print(len(json.load(sys.stdin).get('ops', [])))")
+  ops_count=$(echo "$plan_json" | python3 -c "import json, sys; print(json.load(sys.stdin)['ops_count'])")
 
   if [[ "$ops_count" -eq 0 ]]; then
     echo "No operations defined — done."

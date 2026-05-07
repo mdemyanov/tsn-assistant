@@ -191,7 +191,7 @@ def apply_dotted_mutation(manifest: dict, dotted_path: str, new_value) -> None:
     section[key] = new_value
 
 
-def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
+def emit_plan(manifest: dict, init: bool) -> dict:
     """Формирует ops plan структуру для последующего вывода JSON."""
     ops = manifest.get("operations") or []
     plan_ops = []
@@ -239,7 +239,7 @@ def main(argv: list[str]) -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     apply_on_value_mutations(manifest)  # T6: env-driven mutations
-    plan = emit_plan(manifest, profile_dir, args.init)
+    plan = emit_plan(manifest, args.init)
 
     print(json.dumps(plan, ensure_ascii=False, indent=2))
     return 0

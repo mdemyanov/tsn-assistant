@@ -503,6 +503,106 @@ assert "T-W4c-CUSTOM-no-overrides: нет resolved agents (custom anti-opinion)"
 cd "$REPO_ROOT"
 rm -rf "$TMP_CUSTOM"
 
+# ===== T-W4c-B-MENU: print_profile_menu output =====
+echo ""
+echo "==> T-W4c-B-MENU: print_profile_menu output"
+TMP_MENU=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_MENU/"
+cd "$TMP_MENU"
+# Вызываем функцию из init.sh: извлекаем блок helper functions и вызываем print_profile_menu
+MENU_OUTPUT=$(bash -c "
+$(sed -n '/^# ===== Helper functions/,/^# ===== End helper functions/p' "$TMP_MENU/scripts/init.sh")
+print_profile_menu
+")
+assert "T-W4c-B-MENU-01: заголовок Available profiles" "echo \"\$MENU_OUTPUT\" | grep -qF 'Available profiles:'"
+assert "T-W4c-B-MENU-02: project description в меню" "echo \"\$MENU_OUTPUT\" | grep -q 'project.*Delivery'"
+assert "T-W4c-B-MENU-03: project первым в списке" "echo \"\$MENU_OUTPUT\" | grep -n 'project\|kb-team' | head -1 | grep -q 'project'"
+assert "T-W4c-B-MENU-04: audience kb-team в меню ([для:)" "echo \"\$MENU_OUTPUT\" | grep -qF '[для:'"
+assert "T-W4c-B-MENU-05: custom без audience-скобок" "echo \"\$MENU_OUTPUT\" | grep 'custom' | grep -qvF '[для:'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_MENU"
+
+# ===== T-W4c-B-SUMMARY: print_profile_summary output =====
+echo ""
+echo "==> T-W4c-B-SUMMARY: summary-блок для kb-team профиля"
+TMP_SUMM=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_SUMM/"
+cd "$TMP_SUMM"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+SUMM_OUTPUT=$(INIT_FORCE=1 INIT_SKIP_PROMPTS=1 bash scripts/init.sh --profile kb-team "TestS" "TSS" "desc" "t@x.com" 2>&1)
+assert "T-W4c-B-SUMMARY-01: description в summary" "echo \"\$SUMM_OUTPUT\" | grep -qF 'Внутренняя командная KB'"
+assert "T-W4c-B-SUMMARY-02: Operations > 0 в summary" "echo \"\$SUMM_OUTPUT\" | grep -qE 'Operations[[:space:]]*:[[:space:]]*[1-9]'"
+assert "T-W4c-B-SUMMARY-03: Overrides: 1 в summary (kb-team имеет 1)" "echo \"\$SUMM_OUTPUT\" | grep -qE 'Overrides[[:space:]]*:[[:space:]]*1'"
+assert "T-W4c-B-SUMMARY-04: Subagents core/optional/disabled в summary" "echo \"\$SUMM_OUTPUT\" | grep -qE 'Subagents[[:space:]]*:.*core.*optional.*disabled'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_SUMM"
+
+# ===== T-W4c-B-CONFIRM: confirm_apply bypass и cancel =====
+echo ""
+echo "==> T-W4c-B-CONFIRM: confirm gate bypass и cancel"
+TMP_CONF=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_CONF/"
+cd "$TMP_CONF"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+
+# T-W4c-B-CONFIRM-01: INIT_FORCE=1 bypass
+INIT_FORCE=1 INIT_SKIP_PROMPTS=1 bash scripts/init.sh --profile project "TestC1" "TC1" "desc" "t@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-W4c-B-CONFIRM-01: INIT_FORCE=1 exit 0" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_CONF"
+
+# T-W4c-B-CONFIRM-02: no-TTY bypass (echo "" | bash ...)
+TMP_CONF2=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_CONF2/"
+cd "$TMP_CONF2"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+echo "" | bash scripts/init.sh --profile project "TestC2" "TC2" "desc" "t@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-W4c-B-CONFIRM-02: no-TTY bypass exit 0" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_CONF2"
+
+# T-W4c-B-CONFIRM-03: ответ "n" через non-TTY stdin (no-TTY bypass — cancel path не активен)
+# При non-TTY stdin confirm_apply делает bypass (return 0).
+# Тест проверяет exit 0 через no-TTY path (AC-3.3 bypass).
+TMP_CONF3=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_CONF3/"
+cd "$TMP_CONF3"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+printf 'n\n' | bash scripts/init.sh --profile project "TestC3" "TC3" "desc" "t@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-W4c-B-CONFIRM-03: non-TTY с stdin 'n' — exit 0 (no-TTY bypass активен)" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_CONF3"
+
+# T-W4c-B-CONFIRM-04: no-TTY — FS изменён (scaffold создан, т.к. bypass активен)
+# confirm_apply делает bypass при non-TTY; scaffold применяется
+TMP_CONF4=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_CONF4/"
+cd "$TMP_CONF4"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+echo "" | bash scripts/init.sh --profile project "TestC4" "TC4" "desc" "t@x.com" >/dev/null 2>&1
+assert "T-W4c-B-CONFIRM-04: no-TTY bypass — scaffold создан (project profile)" "[ -d content/00-project/plans ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_CONF4"
+
+# T-W4c-B-CONFIRM-05: INIT_FORCE=1 — summary содержит profile name (не cancelled)
+TMP_CONF5=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_CONF5/"
+cd "$TMP_CONF5"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+CONF5_OUTPUT=$(INIT_FORCE=1 INIT_SKIP_PROMPTS=1 bash scripts/init.sh --profile project "TestC5" "TC5" "desc" "t@x.com" 2>&1)
+assert "T-W4c-B-CONFIRM-05: INIT_FORCE=1 — summary профиля в stdout (не cancelled)" "echo \"\$CONF5_OUTPUT\" | grep -qF 'Profile: project'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_CONF5"
+
 # ===== T-LEGACY: init без --profile fallback на project =====
 echo ""
 echo "==> T-LEGACY: init без --profile fallback на project"

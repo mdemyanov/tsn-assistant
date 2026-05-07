@@ -5,20 +5,38 @@
 ## Быстрый старт
 
 1. **Открой клон в Claude Code** и выполни `/init` — slash-команда проведёт двухфазную инициализацию:
+   - покажет **интерактивное меню профилей** с описаниями (`<имя> — <описание> [для: <аудитория>]`);
+   - после выбора профиля — **summary block** (operations / overrides / subagents) и **confirm gate** перед применением;
    - заполнит плейсхолдеры (имя проекта, код каталога Gramax, описание, email редактора);
    - спросит URL нового origin и **отвяжет репо от шаблона** (`rm -rf .git && git init`);
    - проведёт интервью по теме проекта (стек, команды сборки, red-lines), оставит `<!-- TODO(/init): … -->` на пропусках.
 2. (Опционально для SMP-проекта) `bash scripts/apply-overlay.sh naumen-smp`.
 3. `/pm decompose <твоя первая фича>` — поехали.
 
-> **Без Claude Code:** `bash scripts/init.sh "<имя>" "<код>" "<описание>" "<email>" "<git-url>"` даст фазу 1; фазу 2 (интервью) тогда придётся пройти руками.
+> **Без Claude Code:** `bash scripts/init.sh --profile <name> "<имя>" "<код>" "<описание>" "<email>" "<git-url>"` даст фазу 1 неинтерактивно; фазу 2 (интервью) тогда придётся пройти руками.
 > **Backup до init:** склонируй шаблон второй копией заранее, если хочется иметь возможность сравнить с оригиналом — wipe удаляет историю шаблона.
 
-### Полезные команды (Wave 2 — профильная система)
+### Доступные профили (7/7 stable)
 
-- `bash scripts/init.sh --profile project "Project Name" "PROJ" "desc" "user@x.com"` — init с явным профилем (Wave 2)
+| Профиль | Назначение |
+|---------|------------|
+| `project` | Delivery-проект (Researcher → BA → SA → Dev → DevOps). Default |
+| `kb-team` | Internal team KB (onboarding/runbook/role/incident) |
+| `kb-product` | Документация продукта для клиентов |
+| `product` | Разработка продукта/модуля (vision → spec → ADR → release) |
+| `methodology` | Methodology / playbook (principles → practices → playbooks) |
+| `course` | Обучающий курс (modules → lessons → assessments) |
+| `custom` | Open-ended catch-all (anti-opinion baseline) |
+
+### Полезные команды
+
+- `bash scripts/init.sh` — interactive: меню профилей с описаниями, summary, confirm
+- `bash scripts/init.sh --profile <name> "Name" "CODE" "desc" "email" "git-url"` — non-interactive (CLI)
+- `INIT_FORCE=1 bash scripts/init.sh --profile <name> ...` — пропустить confirm prompt (CI)
 - `python3 scripts/validate-profile.py` — валидация manifest'ов профилей
-- `bash scripts/apply-overlay.sh --profile --dry-run kb-team` — preview профильных операций
+- `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций профиля
+- `bash scripts/check.sh --fast` — pre-commit gate (validate-content + validate-profile, ~3 сек)
+- `bash scripts/check.sh --full` — pre-merge gate (+ tests, ~30 сек)
 
 ## Что внутри
 

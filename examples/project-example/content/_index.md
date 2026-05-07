@@ -1,9 +1,9 @@
 ---
 order: 0
-title: Example Project — База знаний
+title: {{PROJECT_NAME}} — База знаний
 ---
 
-Demo project for project-template
+{{PROJECT_DESCRIPTION}}
 
 ## Навигация
 

@@ -1,5 +1,5 @@
-title: Example Project — База знаний
-description: Demo project for project-template
+title: {{PROJECT_NAME}} — База знаний
+description: {{PROJECT_DESCRIPTION}}
 syntax: XML
 language: ru
 
@@ -39,4 +39,4 @@ properties:
 filterProperties: [Тип контента, Фаза, Статус]
 
 editors:
-  - owner@example.com
+  - {{EDITOR_EMAIL}}

@@ -78,7 +78,9 @@
 
 ### Команды
 
-- `bash scripts/init.sh --profile <name> ...` — выбрать профиль на init (по умолчанию интерактивный fallback)
+- `bash scripts/init.sh` — interactive: меню профилей с описаниями + post-selection summary + confirm gate
+- `bash scripts/init.sh --profile <name> ...` — non-interactive (CLI args покрывают все prompts)
+- `INIT_FORCE=1 bash scripts/init.sh ...` — пропустить confirm prompt (для автоматизации/CI)
 - `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций
 - `python3 scripts/validate-profile.py` — валидация manifest'ов
 

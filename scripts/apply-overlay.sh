@@ -245,7 +245,7 @@ is_safe_to_delete() {
   return 1
 }
 
-do_resolve_agents() {
+op_resolve_agents() {
   # W4a-T12: invoke _resolve_agents.py to merge base prompts + per-profile overrides
   # into resolved prompts in target dir. Op emitted by _apply_profile.py when manifest
   # contains agent_overrides:.
@@ -402,7 +402,7 @@ for op in plan["ops"]:
       add)            op_add "$profile_dir" "$source" "$target" "$reason" ;;
       replace)        op_replace "$profile_dir" "$source" "$target" "$reason" ;;
       delete)         op_delete "$target" "$reason" "$verdict" ;;
-      resolve_agents) do_resolve_agents "$profile_dir" "$source" "$target" "$reason" ;;  # W4a-T12
+      resolve_agents) op_resolve_agents "$profile_dir" "$source" "$target" "$reason" ;;  # W4a-T12
       *)              echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
     esac
   done <<< "$plan_tsv"

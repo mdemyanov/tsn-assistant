@@ -60,6 +60,14 @@ for cmd in pm pm-review ba sa dev devops research; do
   assert "$cmd.md has description" "head -5 \"$file\" | grep -q '^description:'"
 done
 
+# ===== T-W4b-BASELINE: baseline content/ minimization check (pre-init) =====
+echo ""
+echo "==> T-W4b-BASELINE: baseline content/ size check"
+BASELINE_FILES="$(git ls-files content/ | wc -l | tr -d ' ')"
+assert "T-W4b-BASELINE: baseline content/ = 2 файла" "[ \"$BASELINE_FILES\" = '2' ]"
+assert "T-W4b-BASELINE: baseline files именно _index.md + .doc-root.yaml" \
+       "[ \"\$(git ls-files content/ | sort | tr '\\n' ' ')\" = 'content/.doc-root.yaml content/_index.md ' ]"
+
 # ===== T4: content scaffold =====
 echo ""
 echo "==> T4: content scaffold present (_index.md везде)"

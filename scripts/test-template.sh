@@ -365,6 +365,46 @@ assert "T-LEGACY: project scaffold применён" "[ -d content/00-project/pl
 cd "$REPO_ROOT"
 rm -rf "$TMP_LEG"
 
+# ===== T-W3-A1: on_value mutation end-to-end =====
+echo ""
+echo "==> T-W3-A1: on_value mutation (compliance_domain=152-fz → subagents.compliance: core)"
+TMP_W3A1=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_W3A1/"
+cd "$TMP_W3A1"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+
+# Выполняем helper напрямую с INIT_PROMPT — проверяем mutation в manifest in-memory
+RESULT=$(INIT_PROMPT_compliance_domain=152-fz python3 -c "
+import sys
+sys.path.insert(0, 'scripts')
+from _apply_profile import load_manifest, apply_on_value_mutations
+from pathlib import Path
+m = load_manifest(Path('docs/overlays/profiles/project'))
+apply_on_value_mutations(m)
+print(m['subagents']['compliance'])
+" 2>&1)
+assert "T-W3-A1: with 152-fz, compliance → core" "[ \"$RESULT\" = 'core' ]"
+
+# Без INIT_PROMPT — compliance остаётся optional (default = none, none не имеет on_value mapping)
+RESULT_NO=$(python3 -c "
+import sys
+sys.path.insert(0, 'scripts')
+from _apply_profile import load_manifest, apply_on_value_mutations
+from pathlib import Path
+m = load_manifest(Path('docs/overlays/profiles/project'))
+apply_on_value_mutations(m)
+print(m['subagents']['compliance'])
+" 2>&1)
+assert "T-W3-A1: без env, compliance → optional (default=none)" "[ \"$RESULT_NO\" = 'optional' ]"
+
+# Проверяем end-to-end через init.sh (non-interactive с INIT_SKIP_PROMPTS=1 default)
+INIT_PROMPT_compliance_domain=152-fz INIT_SKIP_PROMPTS=1 bash scripts/init.sh --profile project "TestE2E" "TE" "desc" "t@x.com" >/dev/null 2>&1
+RC=$?
+assert "T-W3-A1: init.sh с INIT_PROMPT_compliance_domain=152-fz exit 0" "[ \"$RC\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_W3A1"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

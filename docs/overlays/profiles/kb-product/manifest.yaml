@@ -1,16 +1,57 @@
 schema_version: 1
 name: kb-product
 description: Документация продукта/процесса для внешних читателей
-status: stub
+audience: Customer success, технические писатели, продуктовые менеджеры
+status: stable
+
 subagents:
   pm: core
   tech-writer: core
   researcher: optional
   ba: optional
   compliance: optional
+  sa: disabled
+  dev: disabled
+  devops: disabled
+  qa: disabled
+  devsecops: disabled
+
 pipelines: {}
-content_scaffold: ./
-doc_root: ./
-operations: []
-compatible_stacks: ["*"]
+
+content_scaffold: content-scaffold/
+doc_root: doc-root.yaml
+
+operations:
+  - op: delete
+    target: content/00-project/
+    reason: "kb-product не использует delivery-структуру"
+  - op: delete
+    target: content/30-requirements/
+    reason: "customer docs не имеют функциональных требований"
+  - op: delete
+    target: content/40-architecture/
+    reason: "архитектура продукта не публикуется наружу"
+  - op: delete
+    target: content/60-implementation/
+    reason: "нет реализации"
+  - op: delete
+    target: content/70-operations/
+    reason: "operations не для внешнего читателя"
+  - op: add
+    source: content-scaffold/
+    target: content/
+    reason: "kb-product scaffold (getting-started, guides, reference, troubleshooting)"
+  - op: replace
+    source: doc-root.yaml
+    target: content/.doc-root.yaml
+    reason: "kb-product properties (Тип контента, Версия продукта, Аудитория)"
+
+# agent_overrides:                         # NOTE: uncomment after T16 creates override file
+#   tech-writer:
+#     source: agent-overrides/tech-writer.md
+#     role_status: core
+
+init_prompts: []
+
+compatible_stacks: []
 maintainer: project_template

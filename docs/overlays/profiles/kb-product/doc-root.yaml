@@ -1,0 +1,14 @@
+title: "{{PROJECT_NAME}} — Документация"
+properties:
+  - name: Тип контента
+    type: enum
+    values: [Getting Started, Guide, Reference, Troubleshooting, Release Notes]
+    required: true
+  - name: Версия продукта
+    type: string
+    placeholder: "v1.2.3"
+    required: true
+  - name: Аудитория
+    type: enum
+    values: [Конечный пользователь, Администратор, Разработчик-интегратор]
+    required: false

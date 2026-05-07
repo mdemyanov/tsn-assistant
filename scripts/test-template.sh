@@ -69,8 +69,23 @@ assert "T-W4b-BASELINE: baseline files именно _index.md + .doc-root.yaml" 
        "[ \"\$(git ls-files content/ | sort | tr '\\n' ' ')\" = 'content/.doc-root.yaml content/_index.md ' ]"
 
 # ===== T4: content scaffold =====
+# ===== T5: init.sh works =====
+# T5 must run before T4 — после W4b baseline content/ минимизирован,
+# полный scaffold создаётся init.sh через apply-overlay --profile project.
 echo ""
-echo "==> T4: content scaffold present (_index.md везде)"
+echo "==> T5: init.sh substitutes PROJECT_NAME and creates branch"
+INIT_SKIP_GIT_RESET=1 bash scripts/init.sh "test-project" "TEST-PROJECT" "Test description" "test@example.com" >/dev/null
+assert "PROJECT_NAME replaced in CLAUDE.md" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
+assert "PROJECT_NAME replaced in content/_index.md" "! grep -q '{{PROJECT_NAME}}' content/_index.md"
+assert "PROJECT_NAME replaced in AGENTS.md" "! grep -q '{{PROJECT_NAME}}' AGENTS.md"
+assert "test-project name appears" "grep -q 'test-project' CLAUDE.md"
+assert "private branch created" "git show-ref --verify --quiet refs/heads/private"
+assert ".env created" "[ -f .env ]"
+
+# ===== T4: post-init content scaffold present (_index.md везде) =====
+# W4b: baseline content/ минимизирован — полный scaffold создаётся init.sh.
+echo ""
+echo "==> T4 (post-init): content scaffold present (_index.md везде)"
 assert ".doc-root.yaml exists" "[ -f content/.doc-root.yaml ]"
 assert "root _index.md" "[ -f content/_index.md ]"
 assert "00-project _index.md" "[ -f content/00-project/_index.md ]"
@@ -84,17 +99,6 @@ assert "60-implementation _index.md" "[ -f content/60-implementation/_index.md ]
 assert "70-operations _index.md" "[ -f content/70-operations/_index.md ]"
 assert "glossary.md exists" "[ -f content/10-domain/glossary.md ]"
 assert "no README.md left in content/" "! find content -name README.md | grep -q ."
-
-# ===== T5: init.sh works =====
-echo ""
-echo "==> T5: init.sh substitutes PROJECT_NAME and creates branch"
-INIT_SKIP_GIT_RESET=1 bash scripts/init.sh "test-project" "TEST-PROJECT" "Test description" "test@example.com" >/dev/null
-assert "PROJECT_NAME replaced in CLAUDE.md" "! grep -q '{{PROJECT_NAME}}' CLAUDE.md"
-assert "PROJECT_NAME replaced in content/_index.md" "! grep -q '{{PROJECT_NAME}}' content/_index.md"
-assert "PROJECT_NAME replaced in AGENTS.md" "! grep -q '{{PROJECT_NAME}}' AGENTS.md"
-assert "test-project name appears" "grep -q 'test-project' CLAUDE.md"
-assert "private branch created" "git show-ref --verify --quiet refs/heads/private"
-assert ".env created" "[ -f .env ]"
 
 # ===== T6: apply-overlay.sh works =====
 echo ""

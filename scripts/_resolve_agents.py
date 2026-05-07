@@ -23,8 +23,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-sys.path.insert(0, str(Path(__file__).parent))
-
 try:
     import yaml
 except ImportError:
@@ -52,7 +50,10 @@ def parse_frontmatter(path: Path) -> Frontmatter:
     match = FRONTMATTER_RE.match(text)
     if match:
         fm_text, body = match.group(1), match.group(2)
-        fm = yaml.safe_load(fm_text) or {}
+        try:
+            fm = yaml.safe_load(fm_text) or {}
+        except yaml.YAMLError as e:
+            raise OverrideError(f"{path}: malformed YAML frontmatter — {e}")
     else:
         fm, body = {}, text
     return Frontmatter(fm=fm, body=body)
@@ -202,7 +203,11 @@ def main() -> int:
         print(f"error: manifest.yaml not found in {profile_dir}", file=sys.stderr)
         return 1
 
-    manifest = yaml.safe_load(manifest_path.read_text())
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text())
+    except yaml.YAMLError as e:
+        print(f"error: {manifest_path}: malformed YAML — {e}", file=sys.stderr)
+        return 1
     overrides = manifest.get("agent_overrides", {}) or {}
     profile_name = manifest.get("name", profile_dir.name)
 
@@ -217,7 +222,14 @@ def main() -> int:
                   file=sys.stderr)
             return 1
 
-        override_path = profile_dir / overrides[role]["source"] if role in overrides else None
+        override_path: Optional[Path] = None
+        if role in overrides:
+            source = overrides[role].get("source")
+            if not source:
+                print(f"error: agent_overrides.{role} missing 'source' field в manifest",
+                      file=sys.stderr)
+                return 1
+            override_path = profile_dir / source
 
         if override_path is not None:
             if not override_path.exists():
@@ -234,7 +246,7 @@ def main() -> int:
         marker = build_marker(profile_name, role, override_path)
 
         target_path = args.target_dir / f"{role}-agent.md"
-        target_path.write_text(marker + resolved)
+        target_path.write_text(marker + resolved, encoding="utf-8")
 
     return 0
 

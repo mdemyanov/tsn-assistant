@@ -38,6 +38,70 @@ def load_manifest(profile_dir: Path) -> dict:
     return manifest
 
 
+def is_baseline_file(path: Path) -> bool:
+    """Файл считается baseline если: пустой, имеет placeholder, или _index.md < BASELINE_CONTENT_MAX_BYTES.
+
+    A6: symlinks count as content (не baseline) если не _index.md/.gitkeep.
+    """
+    if not path.exists():
+        return True
+    if path.is_symlink():
+        # A6: symlink — non-baseline (избегаем follow-чужих-указателей)
+        return path.name in (".gitkeep",)  # symlink на .gitkeep допустим
+    if path.is_file():
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return False
+        if size == 0:
+            return True
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            return False
+        if "{{" in text:
+            return True
+        if path.name == "_index.md" and size < BASELINE_CONTENT_MAX_BYTES:
+            return True
+        return False
+    return False
+
+
+def is_safe_to_delete(target: Path) -> bool:
+    """Папка safe to delete если содержит только baseline content (_index.md + .gitkeep)."""
+    if not target.exists():
+        return True  # уже нет — OK
+    if target.is_file():
+        return is_baseline_file(target)
+    if not target.is_dir():
+        return False
+    for entry in target.rglob("*"):
+        if entry.is_dir():
+            continue
+        name = entry.name
+        if name == ".gitkeep":
+            continue
+        if name == "_index.md" and is_baseline_file(entry):
+            continue
+        return False
+    return True
+
+
+def compute_verdict(op: dict, init: bool, profile_dir: Path) -> str:
+    """Возвращает verdict: 'safe', 'refuse', 'force-required', или 'add'/'replace'."""
+    op_type = op.get("op")
+    if op_type in ("add", "replace"):
+        return op_type  # просто маркер, без safety check
+    if op_type == "delete":
+        target = Path(op.get("target", ""))
+        if init:
+            return "safe"  # init mode skip strict check (передаст --force в op_delete)
+        if is_safe_to_delete(target):
+            return "safe"
+        return "refuse"
+    return "unknown"
+
+
 def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
     """Формирует ops plan структуру для последующего вывода JSON."""
     ops = manifest.get("operations") or []
@@ -46,12 +110,16 @@ def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
         if not isinstance(op_decl, dict):
             continue
         op_type = op_decl.get("op")
+        if not op_type:
+            # Skip malformed op entry; warn to stderr
+            print(f"WARNING: skipping op without 'op' field: {op_decl}", file=sys.stderr)
+            continue
         plan_ops.append({
             "op": op_type,
             "source": op_decl.get("source", ""),
             "target": op_decl.get("target", ""),
             "reason": op_decl.get("reason", ""),
-            "verdict": "pending",  # placeholder; T2 заполнит
+            "verdict": compute_verdict(op_decl, init, profile_dir),
         })
     return {
         "profile": manifest.get("name", ""),

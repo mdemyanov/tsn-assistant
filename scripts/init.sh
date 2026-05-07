@@ -146,6 +146,63 @@ done
 # 4.5 — T40: Применить профильный overlay (operations: add/replace/delete)
 if [[ -n "$PROFILE" ]]; then
   echo "Applying profile overlay '$PROFILE'..."
+
+  # T7 (W3-A1): Собрать ответы init_prompts из manifest + export как INIT_PROMPT_<id>
+  if command -v python3 >/dev/null 2>&1; then
+    PROMPTS_JSON=$(python3 -c "
+import yaml, json
+m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
+print(json.dumps(m.get('init_prompts') or []))
+" 2>/dev/null)
+
+    if [[ -n "$PROMPTS_JSON" ]] && [[ "$PROMPTS_JSON" != "[]" ]]; then
+      # Получить количество prompts
+      PROMPTS_COUNT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+
+      for i in $(seq 0 $((PROMPTS_COUNT - 1))); do
+        PROMPT_ID=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('id', ''))")
+        PROMPT_TEXT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('prompt', ''))")
+        PROMPT_TYPE=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('type', 'string'))")
+        PROMPT_DEFAULT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('default', ''))")
+        PROMPT_CHOICES=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; c=p.get('choices') or []; print('|'.join(c))")
+
+        if [[ -z "$PROMPT_ID" ]]; then continue; fi
+
+        # T6 advisory I1: validate prompt id is valid bash identifier
+        if ! [[ "$PROMPT_ID" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+          echo "ERROR: init_prompts id '$PROMPT_ID' содержит недопустимые символы (используй [A-Za-z0-9_] only)" >&2
+          exit 1
+        fi
+
+        # Если non-interactive (нет TTY) или INIT_SKIP_PROMPTS — использовать default
+        if [[ ! -t 0 ]] || [[ "${INIT_SKIP_PROMPTS:-0}" == "1" ]]; then
+          ANSWER="$PROMPT_DEFAULT"
+        else
+          # Показать prompt + choices (если enum)
+          if [[ "$PROMPT_TYPE" == "enum" ]] && [[ -n "$PROMPT_CHOICES" ]]; then
+            echo "$PROMPT_TEXT (one of: $(echo "$PROMPT_CHOICES" | tr '|' ' '), default: $PROMPT_DEFAULT)"
+          else
+            echo "$PROMPT_TEXT (default: $PROMPT_DEFAULT)"
+          fi
+          read -r -p "  → " ANSWER
+          ANSWER="${ANSWER:-$PROMPT_DEFAULT}"
+        fi
+
+        # Validate enum choice
+        if [[ "$PROMPT_TYPE" == "enum" ]] && [[ -n "$PROMPT_CHOICES" ]]; then
+          if ! echo "|$PROMPT_CHOICES|" | grep -q "|$ANSWER|"; then
+            echo "ERROR: '$ANSWER' не в choices [$PROMPT_CHOICES] для prompt '$PROMPT_ID'" >&2
+            exit 1
+          fi
+        fi
+
+        # Export
+        export "INIT_PROMPT_$PROMPT_ID=$ANSWER"
+        echo "  ✓ INIT_PROMPT_$PROMPT_ID=$ANSWER"
+      done
+    fi
+  fi
+
   # --force нужен потому что Wave 1 scaffold (30-requirements/, 40-architecture/...)
   # содержит реальный baseline-контент, который kb-team / другие профили удаляют.
   # На init это безопасно: пользователь только что клонировал шаблон.

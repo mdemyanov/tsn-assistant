@@ -27,12 +27,16 @@ from _validate_common import parse_yaml_file, require_yaml  # noqa: E402
 BASELINE_CONTENT_MAX_BYTES = 500
 
 
-class ManifestError(Exception):
-    """Manifest load/parse error — caller should catch and exit cleanly."""
+class ProfileError(Exception):
+    """Profile manifest load/parse/mutation error — caller should catch and exit cleanly."""
+
+
+# Backwards-compat alias (W4a callers использовали ManifestError)
+ManifestError = ProfileError
 
 
 def load_manifest(profile_dir: Path) -> dict:
-    """Читает manifest.yaml; raises ManifestError если parse failed или manifest отсутствует."""
+    """Читает manifest.yaml; raises ProfileError если parse failed или manifest отсутствует."""
     manifest_path = profile_dir / "manifest.yaml"
     if not manifest_path.exists():
         raise ManifestError(f"{manifest_path} не найден")
@@ -145,11 +149,9 @@ def apply_on_value_mutations(manifest: dict) -> None:
         if prompt_type == "enum":
             choices = prompt.get("choices") or []
             if value not in choices:
-                print(
-                    f"ERROR: {env_key}={value!r} не в choices {choices}",
-                    file=sys.stderr,
+                raise ProfileError(
+                    f"{env_key}={value!r} не в choices {choices}"
                 )
-                sys.exit(1)
 
         on_value = prompt.get("on_value") or {}
         if not isinstance(on_value, dict):
@@ -165,29 +167,23 @@ def apply_on_value_mutations(manifest: dict) -> None:
 def apply_dotted_mutation(manifest: dict, dotted_path: str, new_value) -> None:
     """Применяет mutation по dotted-path (например 'subagents.compliance' → 'core').
 
-    Exit 1 если path не существует (защита от typo в manifest).
+    Raises ProfileError если path не существует (защита от typo в manifest).
     """
     parts = dotted_path.split(".")
     if len(parts) < 2:
-        print(
-            f"ERROR: invalid dotted path '{dotted_path}' (нужно минимум section.key)",
-            file=sys.stderr,
+        raise ProfileError(
+            f"invalid dotted path '{dotted_path}' (нужно минимум section.key)"
         )
-        sys.exit(1)
     section_name, key = parts[0], ".".join(parts[1:])
     section = manifest.get(section_name)
     if not isinstance(section, dict):
-        print(
-            f"ERROR: section '{section_name}' не существует в manifest или не dict",
-            file=sys.stderr,
+        raise ProfileError(
+            f"section '{section_name}' не существует в manifest или не dict"
         )
-        sys.exit(1)
     if key not in section:
-        print(
-            f"ERROR: '{dotted_path}' не существует в manifest (нет ключа '{key}' в '{section_name}')",
-            file=sys.stderr,
+        raise ProfileError(
+            f"'{dotted_path}' не существует в manifest (нет ключа '{key}' в '{section_name}')"
         )
-        sys.exit(1)
     section[key] = new_value
 
 
@@ -247,10 +243,10 @@ def main(argv: list[str]) -> int:
 
     try:
         manifest = load_manifest(profile_dir)
-    except ManifestError as e:
+        apply_on_value_mutations(manifest)  # T6: env-driven mutations
+    except ProfileError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-    apply_on_value_mutations(manifest)  # T6: env-driven mutations
     plan = emit_plan(manifest, args.init)
 
     print(json.dumps(plan, ensure_ascii=False, indent=2))

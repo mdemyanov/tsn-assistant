@@ -85,6 +85,92 @@ bash scripts/apply-overlay.sh naumen-smp >/dev/null
 HASH2=$(git diff --stat | shasum | awk '{print $1}')
 assert "round-trip produces same diff" "[ \"$HASH1\" = \"$HASH2\" ]"
 
+# ===== Test T-W4b-T10: negative — bad dotted path → exit code 1 =====
+echo ""
+echo "==> Test T-W4b-T10: negative: apply_dotted_mutation на несуществующий path"
+TMP_T10=$(mktemp -d)
+mkdir -p "$TMP_T10/docs/overlays/profiles/test-bad-mutation"
+cat > "$TMP_T10/docs/overlays/profiles/test-bad-mutation/manifest.yaml" <<EOF
+schema_version: 1
+name: test-bad-mutation
+description: typo'ed mutation path для negative test
+audience: tests
+status: stub
+subagents: {}
+pipelines: {}
+init_prompts:
+  - id: bad
+    type: enum
+    choices: [yes]
+    default: yes
+    on_value:
+      yes:
+        nonexistent.section: core
+operations: []
+compatible_stacks: []
+maintainer: tests
+EOF
+ln -s "$TMP/scripts" "$TMP_T10/scripts"
+OLDPWD_T10="$PWD"
+cd "$TMP_T10"
+rc=0
+INIT_PROMPT_bad=yes python3 scripts/_apply_profile.py docs/overlays/profiles/test-bad-mutation 2>/dev/null || rc=$?
+cd "$OLDPWD_T10"
+rm -rf "$TMP_T10"
+assert "T-W4b-T10: bad mutation → exit code 1" "[ \"$rc\" = '1' ]"
+
+# ===== Test T-W4b-T10b: ProfileError raised, не SystemExit =====
+echo ""
+echo "==> Test T-W4b-T10b: ProfileError raised, не SystemExit"
+TMP_T10B=$(mktemp -d)
+mkdir -p "$TMP_T10B/docs/overlays/profiles/test-bad-mutation-2"
+cat > "$TMP_T10B/docs/overlays/profiles/test-bad-mutation-2/manifest.yaml" <<EOF
+schema_version: 1
+name: test-bad-mutation-2
+description: typo'ed mutation path
+audience: tests
+status: stub
+subagents: {}
+pipelines: {}
+init_prompts:
+  - id: bad
+    type: enum
+    choices: [yes]
+    default: yes
+    on_value:
+      yes:
+        nonexistent.section: core
+operations: []
+compatible_stacks: []
+maintainer: tests
+EOF
+ln -s "$TMP/scripts" "$TMP_T10B/scripts"
+OLDPWD_T10B="$PWD"
+cd "$TMP_T10B"
+
+result=$(INIT_PROMPT_bad=yes python3 -c "
+import sys
+sys.path.insert(0, 'scripts')
+import importlib.util
+spec = importlib.util.spec_from_file_location('apply_profile', 'scripts/_apply_profile.py')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+try:
+    manifest = mod.load_manifest(__import__('pathlib').Path('docs/overlays/profiles/test-bad-mutation-2'))
+    mod.apply_on_value_mutations(manifest)
+    print('NO_EXCEPTION')
+except Exception as e:
+    if hasattr(mod, 'ProfileError') and isinstance(e, mod.ProfileError):
+        print('OK_ProfileError')
+    elif isinstance(e, SystemExit):
+        print('FAIL_SystemExit')
+    else:
+        print('UNKNOWN: ' + type(e).__name__)
+" 2>&1 | tail -1)
+cd "$OLDPWD_T10B"
+rm -rf "$TMP_T10B"
+assert "T-W4b-T10b: ProfileError exception type (не SystemExit)" "[ \"$result\" = 'OK_ProfileError' ]"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

@@ -67,6 +67,19 @@ python3 scripts/validate-content.py
 
 Требует `pyyaml` (`pip install pyyaml`). Запускается автоматически в `bash scripts/test-template.sh` и в slash-команде `/pm-review`.
 
+### Setup pre-commit hooks (опционально)
+
+Чтобы валидаторы (`validate-content.py`, `validate-profile.py`) запускались автоматически перед каждым commit'ом:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+Это активирует `.githooks/pre-commit` (запускает `bash scripts/check.sh --fast`).
+
+Bypass: `git commit --no-verify`.
+Disable: `git config --unset core.hooksPath`.
+
 ## Для мейнтейнеров шаблона
 
 ### Источники

@@ -366,6 +366,30 @@ assert "T-LEGACY: project scaffold применён" "[ -d content/00-project/pl
 cd "$REPO_ROOT"
 rm -rf "$TMP_LEG"
 
+# ===== T-W3-F3: pre-commit hook setup =====
+echo ""
+echo "==> T-W3-F3: pre-commit hook"
+TMP_F3=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_F3/"
+cd "$TMP_F3"
+git init -q -b main && git add -A && git -c user.email=t@x -c user.name=t commit -q -m baseline
+
+# Активировать hooks
+bash scripts/install-hooks.sh >/dev/null 2>&1
+HP=$(git config --get core.hooksPath)
+assert "T-W3-F3: install-hooks устанавливает core.hooksPath" "[ \"$HP\" = '.githooks' ]"
+assert "T-W3-F3: .githooks/pre-commit executable" "[ -x .githooks/pre-commit ]"
+
+# Test bypass: --no-verify обходит hook
+echo "test" > test_bypass.txt
+git add test_bypass.txt
+git -c user.email=t@x -c user.name=t commit -m "bypass" --no-verify >/dev/null 2>&1
+RC=$?
+assert "T-W3-F3: --no-verify обходит hook" "[ \"$RC\" = '0' ]"
+
+cd "$REPO_ROOT"
+rm -rf "$TMP_F3"
+
 # ===== T-W3-F4: scripts/check.sh =====
 echo ""
 echo "==> T-W3-F4: scripts/check.sh"

@@ -21,7 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _validate_common import parse_yaml_file, require_yaml  # noqa: E402
 
-# A6: named constant вместо magic 500
+# A6: named constant вместо magic 500.
+# 500B: scaffold _index.md entries обычно <200B; threshold даёт 2× headroom
+# до перехода в "real content" зону.
 BASELINE_CONTENT_MAX_BYTES = 500
 
 
@@ -88,12 +90,19 @@ def is_safe_to_delete(target: Path) -> bool:
 
 
 def compute_verdict(op: dict, init: bool, profile_dir: Path) -> str:
-    """Возвращает verdict: 'safe', 'refuse', 'force-required', или 'add'/'replace'."""
+    """Возвращает verdict: 'safe', 'refuse', или 'add'/'replace'.
+
+    NOTE: 'force-required' зарезервирован для Wave 4 (более гранулярный gate).
+    """
     op_type = op.get("op")
     if op_type in ("add", "replace"):
         return op_type  # просто маркер, без safety check
     if op_type == "delete":
-        target = Path(op.get("target", ""))
+        raw_target = op.get("target", "")
+        if not raw_target:
+            print(f"WARNING: delete op missing 'target': {op}", file=sys.stderr)
+            return "refuse"
+        target = Path(raw_target)
         if init:
             return "safe"  # init mode skip strict check (передаст --force в op_delete)
         if is_safe_to_delete(target):

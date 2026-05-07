@@ -37,11 +37,11 @@ flowchart TD
 |---------|------------|--------|
 | project | Delivery (Researcher → BA → SA → Dev → DevOps) | stable |
 | kb-team | Internal team KB (onboarding/runbook/role/incident) | stable |
-| product | Разработка продукта | stub (W4) |
-| kb-product | Документация продукта для клиентов | stub (W4) |
-| methodology | Методология / playbook | stub (W4) |
-| course | Обучающий курс | stub (W4) |
-| custom | Open-ended | stub (W4) |
+| kb-product | Документация продукта для клиентов | stable |
+| product | Разработка продукта/модуля (vision → spec → ADR → release) | stable |
+| methodology | Методология / playbook (principles → practices → playbooks) | stable |
+| course | Обучающий курс (modules → lessons → assessments) | stable |
+| custom | Open-ended catch-all (anti-opinion baseline) | stable |
 
 Каждый профиль = `manifest.yaml` (12 полей schema) + `content-scaffold/` + `doc-root.yaml`.
 

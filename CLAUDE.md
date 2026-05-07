@@ -70,11 +70,11 @@
 |---------|------------|--------|
 | `project` | Delivery-проект (default) | stable |
 | `kb-team` | Internal team KB (onboarding/runbook/role/incident) | stable |
-| `product` | Разработка продукта | stub (Wave 3+) |
-| `kb-product` | Документация продукта для клиентов | stub |
-| `methodology` | Methodology / playbook | stub |
-| `course` | Обучающий курс | stub |
-| `custom` | Open-ended | stub |
+| `kb-product` | Документация продукта для клиентов | stable |
+| `product` | Разработка продукта/модуля (vision → spec → ADR → release) | stable |
+| `methodology` | Methodology / playbook (principles → practices → playbooks) | stable |
+| `course` | Обучающий курс (modules → lessons → assessments) | stable |
+| `custom` | Open-ended catch-all (anti-opinion baseline) | stable |
 
 ### Команды
 

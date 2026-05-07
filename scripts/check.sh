@@ -59,6 +59,7 @@ run_check "validate-profile.py" "python3 scripts/validate-profile.py"
 if [[ "$MODE" == "--full" ]]; then
   run_check "test-validate-content.sh" "bash scripts/test-validate-content.sh"
   run_check "test-validate-profile.sh" "bash scripts/test-validate-profile.sh"
+  run_check "test-resolve-agents.sh" "bash scripts/test-resolve-agents.sh"
   run_check "test-template.sh" "bash scripts/test-template.sh"
 fi
 

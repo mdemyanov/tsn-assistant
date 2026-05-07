@@ -46,10 +46,10 @@ operations:
     target: content/.doc-root.yaml
     reason: "kb-product properties (Тип контента, Версия продукта, Аудитория)"
 
-# agent_overrides:                         # NOTE: uncomment after T16 creates override file
-#   tech-writer:
-#     source: agent-overrides/tech-writer.md
-#     role_status: core
+agent_overrides:
+  tech-writer:
+    source: agent-overrides/tech-writer.md
+    role_status: core
 
 init_prompts: []
 

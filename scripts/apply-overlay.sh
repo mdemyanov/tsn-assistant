@@ -400,7 +400,6 @@ for op in plan["ops"]:
 
   echo "Operations to execute: $ops_count"
 
-
   while IFS=$'\x1f' read -r op source target reason verdict; do
     [[ -z "$op" ]] && continue
     case "$op" in

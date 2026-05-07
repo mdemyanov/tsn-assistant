@@ -473,6 +473,274 @@ assert "T-W3-A3: exit 0 (warning не error)" "[ \"$RC\" = '0' ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_M4V"
 
+# ===== M11.1: base prompt missing =====
+echo ""
+echo "==> M11.1: agent_overrides declared, but base prompt missing"
+TMP_M11_1=$(mktemp -d)
+mkdir -p "$TMP_M11_1/docs/overlays/profiles/m11-1/agent-overrides"
+mkdir -p "$TMP_M11_1/.claude/plugins/project/agents"
+# NB: deliberately NOT creating fakerole-agent.md in base
+cat > "$TMP_M11_1/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| fakerole | Fake |
+MD
+cat > "$TMP_M11_1/docs/overlays/profiles/m11-1/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m11-1
+description: base missing
+status: stub
+subagents:
+  fakerole: core
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+agent_overrides:
+  fakerole:
+    source: agent-overrides/fakerole.md
+    role_status: core
+YAML
+cat > "$TMP_M11_1/docs/overlays/profiles/m11-1/agent-overrides/fakerole.md" <<'MD'
+---
+extends: fakerole
+---
+
+## Роль
+Fake.
+MD
+cd "$TMP_M11_1"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-1 2>&1)
+RC=$?
+set -e
+assert "M11.1 exit 1 при missing base" "[ \"$RC\" = '1' ]"
+assert "M11.1 содержит 'base file not found'" "echo \"$OUT\" | grep -q 'base file not found'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M11_1"
+
+# ===== M11.2: source path missing =====
+echo ""
+echo "==> M11.2: agent_overrides.source not found"
+TMP_M11_2=$(mktemp -d)
+mkdir -p "$TMP_M11_2/docs/overlays/profiles/m11-2"
+mkdir -p "$TMP_M11_2/.claude/plugins/project/agents"
+# Base exists
+cat > "$TMP_M11_2/.claude/plugins/project/agents/ba-agent.md" <<'MD'
+---
+extends: ba
+---
+
+## Роль
+BA.
+MD
+cat > "$TMP_M11_2/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| ba | BA |
+MD
+# manifest references missing source
+cat > "$TMP_M11_2/docs/overlays/profiles/m11-2/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m11-2
+description: source missing
+status: stub
+subagents:
+  ba: core
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+agent_overrides:
+  ba:
+    source: agent-overrides/ba.md
+    role_status: core
+YAML
+cd "$TMP_M11_2"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-2 2>&1)
+RC=$?
+set -e
+assert "M11.2 exit 1 при missing source" "[ \"$RC\" = '1' ]"
+assert "M11.2 содержит 'source not found'" "echo \"$OUT\" | grep -q 'source not found'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M11_2"
+
+# ===== M11.3: extends mismatch =====
+echo ""
+echo "==> M11.3: extends в frontmatter не совпадает с ролью"
+TMP_M11_3=$(mktemp -d)
+mkdir -p "$TMP_M11_3/docs/overlays/profiles/m11-3/agent-overrides"
+mkdir -p "$TMP_M11_3/.claude/plugins/project/agents"
+cat > "$TMP_M11_3/.claude/plugins/project/agents/tech-writer-agent.md" <<'MD'
+---
+name: tech-writer
+---
+
+## Роль
+TW.
+MD
+cat > "$TMP_M11_3/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| tech-writer | TW |
+| ba | BA |
+MD
+cat > "$TMP_M11_3/docs/overlays/profiles/m11-3/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m11-3
+description: extends mismatch
+status: stub
+subagents:
+  tech-writer: core
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+agent_overrides:
+  tech-writer:
+    source: agent-overrides/tech-writer.md
+    role_status: core
+YAML
+# Override: extends: ba (mismatch — should be tech-writer)
+cat > "$TMP_M11_3/docs/overlays/profiles/m11-3/agent-overrides/tech-writer.md" <<'MD'
+---
+extends: ba
+---
+
+## Роль
+Wrong extends.
+MD
+cd "$TMP_M11_3"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-3 2>&1)
+RC=$?
+set -e
+assert "M11.3 exit 1 при extends mismatch" "[ \"$RC\" = '1' ]"
+assert "M11.3 содержит mismatch info" "echo \"$OUT\" | grep -q 'extends' && echo \"$OUT\" | grep -q 'tech-writer' && echo \"$OUT\" | grep -q 'M11'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M11_3"
+
+# ===== M11.4: role disabled, but override declared =====
+echo ""
+echo "==> M11.4: subagents.role=disabled но agent_overrides.role declared"
+TMP_M11_4=$(mktemp -d)
+mkdir -p "$TMP_M11_4/docs/overlays/profiles/m11-4/agent-overrides"
+mkdir -p "$TMP_M11_4/.claude/plugins/project/agents"
+cat > "$TMP_M11_4/.claude/plugins/project/agents/ba-agent.md" <<'MD'
+---
+name: ba
+---
+
+## Роль
+BA.
+MD
+cat > "$TMP_M11_4/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| ba | BA |
+MD
+cat > "$TMP_M11_4/docs/overlays/profiles/m11-4/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m11-4
+description: role disabled
+status: stub
+subagents:
+  ba: disabled
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+agent_overrides:
+  ba:
+    source: agent-overrides/ba.md
+    role_status: core
+YAML
+cat > "$TMP_M11_4/docs/overlays/profiles/m11-4/agent-overrides/ba.md" <<'MD'
+---
+extends: ba
+---
+
+## Роль
+BA override.
+MD
+cd "$TMP_M11_4"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-4 2>&1)
+RC=$?
+set -e
+assert "M11.4 exit 1 при disabled role с override" "[ \"$RC\" = '1' ]"
+assert "M11.4 содержит 'subagents.ba=disabled'" "echo \"$OUT\" | grep -q 'subagents.ba=disabled'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M11_4"
+
+# ===== M11.5: {{super}} в секции, отсутствующей в base =====
+echo ""
+echo "==> M11.5: {{super}} placeholder в секции, отсутствующей в base"
+TMP_M11_5=$(mktemp -d)
+mkdir -p "$TMP_M11_5/docs/overlays/profiles/m11-5/agent-overrides"
+mkdir -p "$TMP_M11_5/.claude/plugins/project/agents"
+# Base has only "Роль" section
+cat > "$TMP_M11_5/.claude/plugins/project/agents/ba-agent.md" <<'MD'
+---
+name: ba
+---
+
+## Роль
+BA base content.
+MD
+cat > "$TMP_M11_5/AGENTS.md" <<'MD'
+## Каталог ролей
+| Имя | Описание |
+|-----|----------|
+| ba | BA |
+MD
+cat > "$TMP_M11_5/docs/overlays/profiles/m11-5/manifest.yaml" <<'YAML'
+schema_version: 1
+name: m11-5
+description: super in non-existent section
+status: stub
+subagents:
+  ba: core
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+agent_overrides:
+  ba:
+    source: agent-overrides/ba.md
+    role_status: core
+YAML
+# Override has {{super}} in section that does NOT exist in base ("Domain" — base only has "Роль")
+cat > "$TMP_M11_5/docs/overlays/profiles/m11-5/agent-overrides/ba.md" <<'MD'
+---
+extends: ba
+---
+
+## Domain
+{{super}}
+
+Дополнительный контекст.
+MD
+cd "$TMP_M11_5"
+set +e
+OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-5 2>&1)
+RC=$?
+set -e
+assert "M11.5 exit 1 при {{super}} в отсутствующей секции" "[ \"$RC\" = '1' ]"
+assert "M11.5 содержит 'Domain' и '{{super}}'" "echo \"$OUT\" | grep -q \"## Domain\" && echo \"$OUT\" | grep -q '{{super}}'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_M11_5"
+
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"
 [[ $FAIL -gt 0 ]] && exit 1

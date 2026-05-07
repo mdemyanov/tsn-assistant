@@ -16,10 +16,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from _validate_common import (  # noqa: E402
     Issue,
+    parse_frontmatter,
     parse_yaml_file,
     require_yaml,
     format_issues,
 )
+
+SECTION_HEADING_RE = _re.compile(r"^## (.+)$", _re.MULTILINE)
 
 PROFILES_ROOT_DEFAULT = Path("docs/overlays/profiles")
 
@@ -322,6 +325,138 @@ def check_m10_status_mismatch(profile_dir: Path, manifest: dict) -> list[Issue]:
     return []
 
 
+def _md_body(text: str) -> str:
+    """Return markdown body without YAML frontmatter."""
+    if not text.startswith("---"):
+        return text
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return text
+    return parts[2]
+
+
+def _section_names(path: Path) -> set[str]:
+    """Return set of '## Heading' names found in markdown body."""
+    text = path.read_text(encoding="utf-8")
+    body = _md_body(text)
+    return {m.group(1).strip() for m in SECTION_HEADING_RE.finditer(body)}
+
+
+def _super_sections(path: Path) -> set[str]:
+    """Return set of section heading names that contain {{super}} in body."""
+    text = path.read_text(encoding="utf-8")
+    body = _md_body(text)
+    sections: list[tuple[str, list[str]]] = []
+    for line in body.split("\n"):
+        m = SECTION_HEADING_RE.match(line)
+        if m:
+            sections.append((m.group(1).strip(), []))
+        elif sections:
+            sections[-1][1].append(line)
+    return {name for name, content in sections if "{{super}}" in "\n".join(content)}
+
+
+def check_m11_overrides(profile_dir: Path, manifest: dict, repo_root: Path) -> list[Issue]:
+    """M11: agent_overrides sanity (5 sub-checks).
+
+    M11.1: base prompt exists for each declared override
+    M11.2: override source path exists
+    M11.3: extends frontmatter matches role name
+    M11.4: role not disabled in subagents
+    M11.5: {{super}} only in sections that exist in base
+    """
+    issues: list[Issue] = []
+    overrides = manifest.get("agent_overrides") or {}
+    if not isinstance(overrides, dict):
+        return issues
+    base_dir = repo_root / ".claude" / "plugins" / "project" / "agents"
+    manifest_path = str(profile_dir / "manifest.yaml")
+    subagents = manifest.get("subagents") or {}
+
+    for role, override_spec in overrides.items():
+        # M11.1: base exists
+        base_path = base_dir / f"{role}-agent.md"
+        if not base_path.exists():
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=(
+                    f"M11: agent_overrides.{role} declared, but base file not found at "
+                    f"{base_path}. Check role name in extends, or create base prompt."
+                ),
+            ))
+            continue
+
+        # M11.2: source path exists
+        source = override_spec.get("source") if isinstance(override_spec, dict) else None
+        if not source:
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=f"M11: agent_overrides.{role} missing 'source' field in manifest.",
+            ))
+            continue
+        source_path = profile_dir / source
+        if not source_path.exists():
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=(
+                    f"M11: agent_overrides.{role}.source not found: {source_path}. "
+                    f"Did you forget to commit the override file?"
+                ),
+            ))
+            continue
+
+        # M11.3: extends matches role
+        fm = parse_frontmatter(source_path)
+        if fm is None:
+            issues.append(Issue(
+                level="error",
+                path=str(source_path),
+                message=f"M11: override at {source_path} has invalid or missing frontmatter.",
+            ))
+            continue
+        extends_value = fm.get("extends")
+        if extends_value != role:
+            issues.append(Issue(
+                level="error",
+                path=str(source_path),
+                message=(
+                    f"M11: override at {source_path} declares 'extends: {extends_value}', "
+                    f"but role is '{role}'. Set extends to '{role}' or move file under "
+                    f"agent-overrides/{extends_value}.md."
+                ),
+            ))
+
+        # M11.4: role not disabled
+        if subagents.get(role) == "disabled":
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=(
+                    f"M11: agent_overrides.{role} declared, but subagents.{role}=disabled. "
+                    f"Either remove override or set subagents.{role} to core/optional."
+                ),
+            ))
+
+        # M11.5: {{super}} only in sections that exist in base
+        base_sections = _section_names(base_path)
+        for section_name in _super_sections(source_path):
+            if section_name not in base_sections:
+                issues.append(Issue(
+                    level="error",
+                    path=str(source_path),
+                    message=(
+                        f"M11: section '## {section_name}' uses {{{{super}}}} but base has "
+                        f"no such section. Either remove {{{{super}}}} or rename heading to "
+                        f"match base."
+                    ),
+                ))
+
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -374,6 +509,7 @@ def main(argv: list[str]) -> int:
         issues.extend(check_m8_on_value_targets(pd, manifest))
         issues.extend(check_m9_compatible_stacks(pd, manifest, repo_root))
         issues.extend(check_m10_status_mismatch(pd, manifest))
+        issues.extend(check_m11_overrides(pd, manifest, repo_root))
 
     if issues:
         print(format_issues(issues))

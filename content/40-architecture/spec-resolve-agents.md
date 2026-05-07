@@ -12,6 +12,8 @@ properties:
 
 Python helper, читает базовые prompts + per-profile overrides, эмиттит resolved prompts в working tree после init/apply-overlay.
 
+> **Идемпотентность:** повторный запуск с теми же входами производит byte-identical resolved файлы. Безопасно вызывать многократно (например, для regenerate после редактирования override).
+
 ## CLI
 
 ```
@@ -39,14 +41,14 @@ def main(profile_dir, base_dir, target_dir):
             error(f"base prompt not found for role: {role}")
             return 1
 
-        if role in overrides:
-            override_path = profile_dir / overrides[role]["source"]
+        override_path = profile_dir / overrides[role]["source"] if role in overrides else None
+        if override_path:
             resolved = merge_delta(base_path, override_path)
         else:
             resolved = base_path.read_text()
 
         # Add GENERATED marker
-        marker = build_marker(profile_dir, role, override_path if role in overrides else None)
+        marker = build_marker(profile_dir, role, override_path)
         (target_dir / f"{role}-agent.md").write_text(marker + resolved)
 
     return 0
@@ -63,7 +65,18 @@ def merge_delta(base_path: Path, override_path: Path) -> str:
     if "extends" not in override_fm:
         raise OverrideError(f"{override_path}: missing 'extends' frontmatter field")
 
-    # Frontmatter merge: override scalar/list поля полностью заменяют base
+    # Validate extends matches role (path-based: override file must be agent-overrides/<role>.md)
+    expected_role = override_path.stem  # filename без .md
+    if override_fm["extends"] != expected_role:
+        raise OverrideError(
+            f"{override_path}: extends '{override_fm['extends']}' but role is '{expected_role}'"
+        )
+
+    # Frontmatter merge:
+    # - scalar fields (description, model): override replaces base
+    # - list fields (tools, disallowedTools, skills): override REPLACES (not unions) base
+    # - missing fields: inherit from base
+    # NB: shallow merge — nested dicts/lists in override REPLACE base wholesale
     merged_fm = {**base_fm, **override_fm}
     del merged_fm["extends"]  # extends не нужен в resolved
 
@@ -145,9 +158,10 @@ def merge_delta(base_path: Path, override_path: Path) -> str:
 
 ## Тесты
 
-См. `scripts/test-_resolve-agents.sh`:
+См. `scripts/test-resolve-agents.sh`:
 
-- `merge_delta` корректно мерджит frontmatter (scalar replace + list replace + inheritance)
+- `merge_delta` корректно мерджит frontmatter (scalar fields)
+- `merge_delta`: list fields в override полностью заменяют base (no union)
 - `merge_delta`: секция `## X` в override заменяет одноимённую в base
 - `merge_delta`: секция в base без override наследуется
 - `merge_delta`: секция в override без base добавляется в конец
@@ -155,3 +169,5 @@ def merge_delta(base_path: Path, override_path: Path) -> str:
 - `merge_delta`: `{{super}}` в секции отсутствующей в base → raise
 - `merge_delta`: пустой override (только frontmatter) → body наследуется полностью
 - `extends:` mismatch → raise
+- main(): subagents.X = disabled → файл `X-agent.md` НЕ пишется в target-dir
+- main(): GENERATED marker присутствует в начале resolved файла (с override + без override variants)

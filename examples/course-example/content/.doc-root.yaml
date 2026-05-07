@@ -1,0 +1,56 @@
+title: "Example Course — Курс"
+description: "Пример обучающего курса"
+syntax: XML
+language: ru
+editors:
+  - "example@course.com"
+
+properties:
+  - name: Тип контента
+    type: Enum
+    style: blue
+    icon: file-text
+    values:
+      - Overview
+      - Lesson
+      - Exercise
+      - Assessment
+      - Resource
+    required: true
+
+  - name: Уровень сложности
+    type: Enum
+    style: purple
+    icon: bar-chart
+    values:
+      - Beginner
+      - Intermediate
+      - Advanced
+    required: true
+
+  - name: Длительность
+    type: String
+    style: grey
+    icon: clock
+    placeholder: "15 мин"
+    required: false
+
+  - name: Статус
+    type: Enum
+    style: green
+    icon: check
+    values:
+      - Draft
+      - Review
+      - Approved
+      - Published
+    required: true
+
+  - name: Prerequisites
+    type: String
+    style: yellow
+    icon: link
+    placeholder: "Знание основ X; пройдите модуль 1"
+    required: false
+
+filterProperties: [Тип контента, Уровень сложности, Статус]

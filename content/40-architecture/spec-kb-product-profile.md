@@ -64,7 +64,6 @@ operations:
 agent_overrides:
   tech-writer:
     source: agent-overrides/tech-writer.md
-    role_status: core
 
 init_prompts: []
 

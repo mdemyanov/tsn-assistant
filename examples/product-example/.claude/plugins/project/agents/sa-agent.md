@@ -3,7 +3,9 @@
      Regenerate: bash scripts/apply-overlay.sh --profile product -->
 
 ---
+name: sa-agent
 description: Системный аналитик — product decision framing для ADR
+model: sonnet
 ---
 
 ## Когда какой скилл звать
@@ -171,4 +173,3 @@ Product-context SA. Проектируешь архитектурные реше
 - **ADR нумерация:** последовательная (0001-, 0002-…); статус: Proposed → Accepted/Rejected/Superseded.
 - **Product context в ADR:** в секции Context всегда указывай бизнес-драйвер (user story или product goal), не только технический контекст.
 - **Cross-catalog references:** ссылки между product-каталогом и другими каталогами (kb-product, project) — только inline code, не markdown link.
-

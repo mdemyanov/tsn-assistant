@@ -1,70 +1,97 @@
-# Example: product profile
+# Example Product
 
-Этот каталог — пример проекта, инициализированного как `product` профиль (внутренняя документация продуктового цикла: vision → discovery → specs → ADR → releases).
+Внутренний проект Naumen на основе шаблона `project_template`.
 
-## Как был создан
+## Быстрый старт
 
-```bash
-bash scripts/init.sh --profile product "Example Product" "EP" "Пример продуктовой документации" "example@product.com"
-```
+1. **Открой клон в Claude Code** и выполни `/init` — slash-команда проведёт двухфазную инициализацию:
+   - заполнит плейсхолдеры (имя проекта, код каталога Gramax, описание, email редактора);
+   - спросит URL нового origin и **отвяжет репо от шаблона** (`rm -rf .git && git init`);
+   - проведёт интервью по теме проекта (стек, команды сборки, red-lines), оставит `<!-- TODO(/init): … -->` на пропусках.
+2. (Опционально для SMP-проекта) `bash scripts/apply-overlay.sh naumen-smp`.
+3. `/pm decompose <твоя первая фича>` — поехали.
+
+> **Без Claude Code:** `bash scripts/init.sh "<имя>" "<код>" "<описание>" "<email>" "<git-url>"` даст фазу 1; фазу 2 (интервью) тогда придётся пройти руками.
+> **Backup до init:** склонируй шаблон второй копией заранее, если хочется иметь возможность сравнить с оригиналом — wipe удаляет историю шаблона.
+
+### Полезные команды (Wave 2 — профильная система)
+
+- `bash scripts/init.sh --profile project "Project Name" "PROJ" "desc" "user@x.com"` — init с явным профилем (Wave 2)
+- `python3 scripts/validate-profile.py` — валидация manifest'ов профилей
+- `bash scripts/apply-overlay.sh --profile --dry-run kb-team` — preview профильных операций
 
 ## Что внутри
 
-- `content/` — Gramax-каталог с 5 разделами:
-  - `10-vision/` — product vision, goals, scope, non-goals
-  - `20-discovery/` — research, competitive analysis, user personas
-  - `30-specs/` — feature specs, user stories, acceptance criteria
-  - `40-architecture/` — ADR, data model (формат MADR)
-  - `50-releases/` — internal changelog и release notes (аудитория Internal)
-- `content/.doc-root.yaml` — properties: Тип контента (Vision/Discovery/Spec/ADR/Release Notes/Roadmap), Статус, Версия, Аудитория
-- `CLAUDE.md`, `AGENTS.md` — заполненные шаблоны проекта (placeholder'ы заменены)
-- `.claude/plugins/project/agents/tech-writer-agent.md` — **resolved version** с применённым internal product tech writer override (AC-tw-1…AC-tw-5). Маркер `<!-- GENERATED -->` сверху.
-- `.claude/plugins/project/agents/sa-agent.md` — **resolved version** с применённым product decision framing override. Маркер `<!-- GENERATED -->` сверху.
+| Что | Где | Кто использует |
+|---|---|---|
+| Карта команды и контракт вызова | `AGENTS.md` | PM |
+| Универсальное ядро правил | `CLAUDE.md` | Все агенты |
+| База знаний Gramax | `content/` | BA, SA, DevOps |
+| Глоссарий и research-выжимки | `content/10-domain/` | BA, Researcher |
+| Спеки (brainstorming) | `docs/superpowers/specs/` | PM |
+| Планы реализации (writing-plans) | `docs/superpowers/plans/` | PM |
+| Журнал уроков | `docs/lessons-learned.md` | Все агенты |
+| Overlay-патчи (SMP и т.п.) | `docs/overlays/` | На старте проекта |
 
-## Что отсутствует
+## Как пользоваться
 
-Профиль `product` не объявляет `op: delete` — удалять нечего (baseline после Wave 4b пустой). Delivery-структура `00-project/`, `60-implementation/`, `70-operations/` не входит в product-scaffold по дизайну.
+- **Аналитики:** `/research <тема>` → `/ba new-requirement <slug>` → ревью `/pm-review`.
+- **Руководители:** `/pm decompose <фича>` для новой задачи; `/pm status` для отчёта.
+- **Разработчики:** получают артефакт SA через `/sa design <фича>`, реализуют через `/dev implement <фича>` (TDD), документируют runbook через `/devops runbook <процедура>`.
+- **Все:** для текстов — `infoinstyle`; для многошаговых задач — `superpowers:brainstorming`.
 
-Роль `qa` присутствует в manifest как `core`, но не включена в resolved agents в этом snapshot: в базовом шаблоне отсутствует `qa-agent.md` (роль QA реализована как два файла — `qa-author-agent.md` и `qa-runner-agent.md`). Это известный gap инфраструктуры; `qa-author-agent.md` и `qa-runner-agent.md` доступны напрямую через команды `/qa --mode=author` и `/qa --mode=runner`.
+## Ветвление
 
-## Профиль product — особенности
+- `private` — рабочая ветка, все правки.
+- `public` — публикация в Gramax, мерж только после `/pm-review`.
 
-- **Активные subagents:** pm, ba, sa, dev, qa, tech-writer (core); researcher, devops, devsecops, compliance (optional)
-- **Overrides:** tech-writer (internal product writer) + sa (product ADR framing)
-- **Pipelines:** project-planning, ba-acceptance (optional); critical-path, scrum-agile (disabled)
-- **Граница с kb-product:** `product` = internal team docs; `kb-product` = customer-facing docs. Property Аудитория: External в `50-releases/` — маркер для переноса в kb-product.
+## Подключённые плагины
 
-## Что демонстрирует пример
+- `gramax@ai-assistants` — writer, comments-read, comments-write
+- `superpowers@claude-plugins-official` — brainstorming, writing-plans, executing-plans, TDD, debugging, ...
+- `project@local` — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы CTO
 
-1. **Два override'а в действии.** `tech-writer-agent.md` и `sa-agent.md` — результат merge: base + delta из `docs/overlays/profiles/product/agent-overrides/`. Маркер `<!-- GENERATED by scripts/_resolve_agents.py -->` сверху.
-2. **Профиль-специфичный scaffold.** Структура `content/` (10-vision…50-releases) отражает product development lifecycle — не delivery-tracking и не customer docs.
-3. **Property Аудитория как граница.** `Аудитория: Internal` vs `External` позволяет разграничить внутренний CHANGELOG от customer-facing release notes без создания отдельного каталога.
+Marketplaces и enabled-плагины описаны в `.claude/settings.json`.
 
-## Как обновить пример
+## Доступные overlays
 
-После изменения product манифеста или scaffold'а пересоздай example:
+- `naumen-smp` — для проектов на платформе Naumen SMP. См. `docs/overlays/naumen-smp/README.md`.
+
+## Валидация
+
+Структуру каталога `content/` проверяет валидатор:
 
 ```bash
-TMP=$(mktemp -d)
-cp -r . "$TMP/product-example"
-rm -rf "$TMP/product-example/.git" "$TMP/product-example/.worktrees"
-cd "$TMP/product-example"
-git init -q && git add -A && git commit -q -m "snapshot" --allow-empty
-bash scripts/init.sh --profile product "Example Product" "EP" "Пример продуктовой документации" "example@product.com"
-
-# Скопируй артефакты обратно в examples/product-example/
-cd /path/to/worktree
-mkdir -p examples/product-example
-cp -r "$TMP/product-example/content" examples/product-example/
-cp "$TMP/product-example/CLAUDE.md" examples/product-example/
-cp "$TMP/product-example/AGENTS.md" examples/product-example/
-mkdir -p examples/product-example/.claude/plugins/project/agents
-cp "$TMP/product-example/.claude/plugins/project/agents/"*.md examples/product-example/.claude/plugins/project/agents/
+python3 scripts/validate-content.py
 ```
 
-## Для чего это пример
+Требует `pyyaml` (`pip install pyyaml`). Запускается автоматически в `bash scripts/test-template.sh` и в slash-команде `/pm-review`.
 
-Static snapshot для новых пользователей шаблона. Контрастирует с:
-- `examples/project-example/` — delivery-проект (полная структура с ADR/req/arch/impl/ops)
-- `examples/kb-product-example/` — customer-facing docs (getting-started/guides/reference/troubleshooting)
-- `examples/kb-team-example/` — internal team KB (onboarding/runbook/role/incident)
+### Setup pre-commit hooks (опционально)
+
+Чтобы валидаторы (`validate-content.py`, `validate-profile.py`) запускались автоматически перед каждым commit'ом:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+Это активирует `.githooks/pre-commit` (запускает `bash scripts/check.sh --fast`).
+
+Bypass: `git commit --no-verify`.
+Disable: `git config --unset core.hooksPath`.
+
+## Для мейнтейнеров шаблона
+
+### Источники
+
+- CTO-скиллы (infoinstyle, correspondence-2): `/Users/mdemyanov/Documents/naumen-cto/.claude/skills/`. При обновлении: `cp -R <src> .claude/plugins/project/skills/<name>/`.
+- Эталоны агентов: `/Users/mdemyanov/knowlage/sd-ai-assistant`, `/Users/mdemyanov/Devel/naumen-smp-mcp`.
+
+### Тестирование
+
+Перед PR в шаблон:
+```bash
+bash scripts/test-template.sh
+```
+
+Должен вывести `Template smoke test PASSED`.

@@ -190,7 +190,7 @@ print(json.dumps(m.get('init_prompts') or []))
 
         # Validate enum choice
         if [[ "$PROMPT_TYPE" == "enum" ]] && [[ -n "$PROMPT_CHOICES" ]]; then
-          if ! echo "|$PROMPT_CHOICES|" | grep -q "|$ANSWER|"; then
+          if ! echo "|$PROMPT_CHOICES|" | grep -qF "|$ANSWER|"; then
             echo "ERROR: '$ANSWER' не в choices [$PROMPT_CHOICES] для prompt '$PROMPT_ID'" >&2
             exit 1
           fi

@@ -429,6 +429,34 @@ assert "M0 содержит 'not valid YAML'" "echo \"$OUT\" | grep -q 'not vali
 cd "$REPO_ROOT"
 rm -rf "$TMP_BAD"
 
+# ===== T-W3-A4-SCHEMA-VERSION: schema_version вне enum → error =====
+echo ""
+echo "==> T-W3-A4-SCHEMA-VERSION"
+TMP_SV=$(mktemp -d)
+mkdir -p "$TMP_SV/docs/overlays/profiles/bad-sv" "$TMP_SV/scripts"
+cp "$REPO_ROOT/scripts/_validate_common.py" "$REPO_ROOT/scripts/validate-profile.py" "$TMP_SV/scripts/"
+cat > "$TMP_SV/docs/overlays/profiles/bad-sv/manifest.yaml" <<'EOFSV'
+schema_version: 99
+name: bad-sv
+description: bad
+status: stub
+subagents: { pm: core }
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+EOFSV
+cd "$TMP_SV"
+set +e
+OUT=$(python3 scripts/validate-profile.py docs/overlays/profiles/bad-sv 2>&1)
+RC=$?
+set -e
+assert "T-W3-A4: error при schema_version: 99" "echo \"$OUT\" | grep -q 'schema_version: 99 не поддерживается'"
+assert "T-W3-A4: exit 1" "[ \"$RC\" = '1' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_SV"
+
 # ===== T-W3-A3-M4-VISIBILITY: broken AGENTS.md heading → warning =====
 echo ""
 echo "==> T-W3-A3-M4-VISIBILITY"

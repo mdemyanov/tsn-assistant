@@ -77,6 +77,25 @@ def check_m2_required_fields(profile_dir: Path, manifest: dict | None) -> list[I
     return issues
 
 
+SUPPORTED_SCHEMA_VERSIONS = {1}
+
+
+def check_schema_version_enum(profile_dir: Path, manifest: dict | None) -> list[Issue]:
+    """A4: schema_version должен быть из enum {1}."""
+    if manifest is None:
+        return []
+    sv = manifest.get("schema_version")
+    if sv is None:
+        return []  # M2 уже сообщил
+    if sv not in SUPPORTED_SCHEMA_VERSIONS:
+        return [Issue(
+            level="error",
+            path=str(profile_dir / "manifest.yaml"),
+            message=f"schema_version: {sv} не поддерживается (ожидается одно из {sorted(SUPPORTED_SCHEMA_VERSIONS)})",
+        )]
+    return []
+
+
 def check_m3_name_matches_dir(profile_dir: Path, manifest: dict) -> list[Issue]:
     """M3: name в manifest совпадает с именем папки."""
     name = manifest.get("name")
@@ -346,6 +365,7 @@ def main(argv: list[str]) -> int:
             ))
             continue
         issues.extend(check_m2_required_fields(pd, manifest))
+        issues.extend(check_schema_version_enum(pd, manifest))
         issues.extend(check_m3_name_matches_dir(pd, manifest))
         issues.extend(check_m4_subagent_names(pd, manifest, known_roles))
         issues.extend(check_m5_pipeline_names(pd, manifest, known_pipelines))

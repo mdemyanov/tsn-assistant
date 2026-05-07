@@ -224,7 +224,11 @@ def main() -> int:
 
         override_path: Optional[Path] = None
         if role in overrides:
-            source = overrides[role].get("source")
+            override_entry = overrides[role]
+            if not isinstance(override_entry, dict):
+                # active: (null value) or active: "string" — treat as missing source
+                override_entry = {}
+            source = override_entry.get("source")
             if not source:
                 print(f"error: agent_overrides.{role} missing 'source' field в manifest",
                       file=sys.stderr)

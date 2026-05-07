@@ -357,7 +357,6 @@ subagents:
   active: core
 agent_overrides:
   active:
-    role_status: core
 operations: []
 EOF
 mkdir -p "$TMPDIR/base-agents-14"

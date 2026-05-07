@@ -501,7 +501,6 @@ compatible_stacks: []
 agent_overrides:
   fakerole:
     source: agent-overrides/fakerole.md
-    role_status: core
 YAML
 cat > "$TMP_M11_1/docs/overlays/profiles/m11-1/agent-overrides/fakerole.md" <<'MD'
 ---
@@ -558,7 +557,6 @@ compatible_stacks: []
 agent_overrides:
   ba:
     source: agent-overrides/ba.md
-    role_status: core
 YAML
 cd "$TMP_M11_2"
 set +e
@@ -606,7 +604,6 @@ compatible_stacks: []
 agent_overrides:
   tech-writer:
     source: agent-overrides/tech-writer.md
-    role_status: core
 YAML
 # Override: extends: ba (mismatch — should be tech-writer)
 cat > "$TMP_M11_3/docs/overlays/profiles/m11-3/agent-overrides/tech-writer.md" <<'MD'
@@ -662,7 +659,6 @@ compatible_stacks: []
 agent_overrides:
   ba:
     source: agent-overrides/ba.md
-    role_status: core
 YAML
 cat > "$TMP_M11_4/docs/overlays/profiles/m11-4/agent-overrides/ba.md" <<'MD'
 ---
@@ -718,7 +714,6 @@ compatible_stacks: []
 agent_overrides:
   ba:
     source: agent-overrides/ba.md
-    role_status: core
 YAML
 # Override has {{super}} in section that does NOT exist in base ("Domain" — base only has "Роль")
 cat > "$TMP_M11_5/docs/overlays/profiles/m11-5/agent-overrides/ba.md" <<'MD'

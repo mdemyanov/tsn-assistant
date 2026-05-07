@@ -246,7 +246,7 @@ is_safe_to_delete() {
 }
 
 op_delete() {
-  local target="$1" reason="$2"
+  local target="$1" reason="$2" verdict="${3:-}"
 
   echo "[DELETE] $target  ($reason)"
 
@@ -265,7 +265,16 @@ op_delete() {
     return 0
   fi
 
-  if is_safe_to_delete "$target"; then
+  # A2: verdict приходит из helper'а; fallback на bash is_safe_to_delete если verdict не передан
+  if [[ -z "$verdict" ]]; then
+    if is_safe_to_delete "$target"; then
+      verdict="safe"
+    else
+      verdict="refuse"
+    fi
+  fi
+
+  if [[ "$verdict" == "safe" ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
       echo "  [DRY-RUN] safe to delete"
       return 0
@@ -309,7 +318,16 @@ apply_profile_overlay() {
     }
   fi
 
-  # Прочитать status
+  # A2: один вызов helper'а — JSON plan на stdout
+  local init_flag=""
+  [[ "$INIT_MODE" -eq 1 ]] && init_flag="--init"
+  local plan_json
+  if ! plan_json=$(python3 scripts/_apply_profile.py "$profile_dir" $init_flag); then
+    echo "ERROR: _apply_profile.py упал на $name" >&2
+    exit 1
+  fi
+
+  # Прочитать status (отдельный вызов — helper не эмиттит status, чтобы plan был чисто ops)
   local status
   status=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m.get('status', 'unknown'))")
   echo "Status: $status"
@@ -318,9 +336,9 @@ apply_profile_overlay() {
     echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
   fi
 
-  # Прочитать operations
+  # Распарсить plan и подсчитать ops
   local ops_count
-  ops_count=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(len(m.get('operations') or []))")
+  ops_count=$(echo "$plan_json" | python3 -c "import json, sys; print(len(json.load(sys.stdin).get('ops', [])))")
 
   if [[ "$ops_count" -eq 0 ]]; then
     echo "No operations defined — done."
@@ -329,20 +347,34 @@ apply_profile_overlay() {
 
   echo "Operations to execute: $ops_count"
 
-  for i in $(seq 0 $((ops_count - 1))); do
-    local op source target reason
-    op=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('op', ''))")
-    source=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('source', ''))")
-    target=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('target', ''))")
-    reason=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('reason', ''))")
+  # Convert JSON plan to delimited rows для bash-friendly iteration.
+  # Используем ASCII Unit Separator (\x1f, non-whitespace) — bash IFS
+  # с whitespace-разделителями (\t, space) схлопывает consecutive delimiters,
+  # что ломает поля с empty source.
+  local plan_tsv
+  plan_tsv=$(echo "$plan_json" | python3 -c '
+import json, sys
+plan = json.load(sys.stdin)
+US = "\x1f"
+for op in plan["ops"]:
+    print(US.join([
+        op.get("op", ""),
+        op.get("source", ""),
+        op.get("target", ""),
+        op.get("reason", ""),
+        op.get("verdict", ""),
+    ]))
+')
 
+  while IFS=$'\x1f' read -r op source target reason verdict; do
+    [[ -z "$op" ]] && continue
     case "$op" in
       add)     op_add "$profile_dir" "$source" "$target" "$reason" ;;
       replace) op_replace "$profile_dir" "$source" "$target" "$reason" ;;
-      delete)  op_delete "$target" "$reason" ;;
+      delete)  op_delete "$target" "$reason" "$verdict" ;;
       *)       echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
     esac
-  done
+  done <<< "$plan_tsv"
 }
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

@@ -166,7 +166,7 @@ mkdir -p "$TMP_ADD/docs/overlays/profiles/test-add/scaffold"
 echo "test content" > "$TMP_ADD/docs/overlays/profiles/test-add/scaffold/article.md"
 mkdir -p "$TMP_ADD/.claude/plugins/project/commands/pipelines"
 mkdir -p "$TMP_ADD/scripts"
-cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_ADD/scripts/"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/_apply_profile.py scripts/apply-overlay.sh "$TMP_ADD/scripts/"
 chmod +x "$TMP_ADD/scripts/apply-overlay.sh" "$TMP_ADD/scripts/validate-profile.py"
 cat > "$TMP_ADD/AGENTS.md" <<'MD'
 ## Каталог ролей
@@ -208,7 +208,7 @@ TMP_REP=$(mktemp -d)
 mkdir -p "$TMP_REP/docs/overlays/profiles/test-rep"
 mkdir -p "$TMP_REP/.claude/plugins/project/commands/pipelines"
 mkdir -p "$TMP_REP/scripts" "$TMP_REP/content"
-cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_REP/scripts/"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/_apply_profile.py scripts/apply-overlay.sh "$TMP_REP/scripts/"
 chmod +x "$TMP_REP/scripts/apply-overlay.sh" "$TMP_REP/scripts/validate-profile.py"
 echo "old" > "$TMP_REP/content/file.txt"
 echo "new" > "$TMP_REP/docs/overlays/profiles/test-rep/file.txt"
@@ -245,7 +245,7 @@ echo ""
 echo "==> T-OP-DELETE: пустая папка удаляется"
 TMP_DEL=$(mktemp -d)
 mkdir -p "$TMP_DEL/docs/overlays/profiles/test-del" "$TMP_DEL/content/empty-dir" "$TMP_DEL/.claude/plugins/project/commands/pipelines" "$TMP_DEL/scripts"
-cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_DEL/scripts/"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/_apply_profile.py scripts/apply-overlay.sh "$TMP_DEL/scripts/"
 chmod +x "$TMP_DEL/scripts/apply-overlay.sh" "$TMP_DEL/scripts/validate-profile.py"
 cat > "$TMP_DEL/AGENTS.md" <<'MD'
 ## Каталог ролей
@@ -278,7 +278,7 @@ rm -rf "$TMP_DEL"
 echo "==> T-OP-DELETE-STRICT: non-empty refuse без --force"
 TMP_DELS=$(mktemp -d)
 mkdir -p "$TMP_DELS/docs/overlays/profiles/test-dels" "$TMP_DELS/content/full-dir" "$TMP_DELS/.claude/plugins/project/commands/pipelines" "$TMP_DELS/scripts"
-cp scripts/_validate_common.py scripts/validate-profile.py scripts/apply-overlay.sh "$TMP_DELS/scripts/"
+cp scripts/_validate_common.py scripts/validate-profile.py scripts/_apply_profile.py scripts/apply-overlay.sh "$TMP_DELS/scripts/"
 chmod +x "$TMP_DELS/scripts/apply-overlay.sh" "$TMP_DELS/scripts/validate-profile.py"
 echo "real content here, much longer than 500 bytes — long article body that simulates a real piece of content the user has written and would not want to lose without confirmation. This text needs to be at least 500 characters long to bypass the size heuristic in is_safe_to_delete. Padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding." > "$TMP_DELS/content/full-dir/_index.md"
 echo "more real content" > "$TMP_DELS/content/full-dir/article.md"

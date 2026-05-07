@@ -39,10 +39,10 @@ def load_manifest(profile_dir: Path) -> dict:
     """Читает manifest.yaml; raises ProfileError если parse failed или manifest отсутствует."""
     manifest_path = profile_dir / "manifest.yaml"
     if not manifest_path.exists():
-        raise ManifestError(f"{manifest_path} не найден")
+        raise ProfileError(f"{manifest_path} не найден")
     manifest = parse_yaml_file(manifest_path)
     if manifest is None:
-        raise ManifestError(f"{manifest_path}: invalid YAML")
+        raise ProfileError(f"{manifest_path}: invalid YAML")
     return manifest
 
 

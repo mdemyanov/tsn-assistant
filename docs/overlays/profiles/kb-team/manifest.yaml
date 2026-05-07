@@ -30,21 +30,6 @@ content_scaffold: content-scaffold/
 doc_root: doc-root.yaml
 
 operations:
-  - op: delete
-    target: content/00-project/
-    reason: "kb-team не использует delivery-структуру (нет ADR, plans, critical-path, security)"
-  - op: delete
-    target: content/30-requirements/
-    reason: "kb-team не использует функциональные требования"
-  - op: delete
-    target: content/40-architecture/
-    reason: "kb-team не имеет компонентов архитектуры"
-  - op: delete
-    target: content/60-implementation/
-    reason: "нет реализации"
-  - op: delete
-    target: content/70-operations/
-    reason: "переносится в 30-runbooks/"
   - op: add
     source: content-scaffold/
     target: content/

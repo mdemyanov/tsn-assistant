@@ -111,6 +111,84 @@ def compute_verdict(op: dict, init: bool, profile_dir: Path) -> str:
     return "unknown"
 
 
+def apply_on_value_mutations(manifest: dict) -> None:
+    """Применяет on_value мутации к manifest in-memory.
+
+    Читает INIT_PROMPT_<id> env vars, ищет соответствующий init_prompt,
+    проверяет value против choices, применяет mutations (dotted path → value).
+
+    Mutations НЕ персистятся в файл — только in-memory.
+    """
+    init_prompts = manifest.get("init_prompts") or []
+    if not isinstance(init_prompts, list):
+        return
+
+    for prompt in init_prompts:
+        if not isinstance(prompt, dict):
+            continue
+        prompt_id = prompt.get("id")
+        if not prompt_id:
+            continue
+
+        env_key = f"INIT_PROMPT_{prompt_id}"
+        value = os.environ.get(env_key)
+        if value is None or value == "":
+            value = prompt.get("default", "")
+
+        if not value:
+            continue
+
+        # Validate enum choices
+        prompt_type = prompt.get("type", "string")
+        if prompt_type == "enum":
+            choices = prompt.get("choices") or []
+            if value not in choices:
+                print(
+                    f"ERROR: {env_key}={value!r} не в choices {choices}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+        on_value = prompt.get("on_value") or {}
+        if not isinstance(on_value, dict):
+            continue
+        mutations = on_value.get(value)
+        if not isinstance(mutations, dict):
+            continue
+
+        for dotted_path, new_value in mutations.items():
+            apply_dotted_mutation(manifest, dotted_path, new_value)
+
+
+def apply_dotted_mutation(manifest: dict, dotted_path: str, new_value) -> None:
+    """Применяет mutation по dotted-path (например 'subagents.compliance' → 'core').
+
+    Exit 1 если path не существует (защита от typo в manifest).
+    """
+    parts = dotted_path.split(".")
+    if len(parts) < 2:
+        print(
+            f"ERROR: invalid dotted path '{dotted_path}' (нужно минимум section.key)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    section_name, key = parts[0], ".".join(parts[1:])
+    section = manifest.get(section_name)
+    if not isinstance(section, dict):
+        print(
+            f"ERROR: section '{section_name}' не существует в manifest или не dict",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if key not in section:
+        print(
+            f"ERROR: '{dotted_path}' не существует в manifest (нет ключа '{key}' в '{section_name}')",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    section[key] = new_value
+
+
 def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
     """Формирует ops plan структуру для последующего вывода JSON."""
     ops = manifest.get("operations") or []
@@ -151,6 +229,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     manifest = load_manifest(profile_dir)
+    apply_on_value_mutations(manifest)  # T6: env-driven mutations
     plan = emit_plan(manifest, profile_dir, args.init)
 
     print(json.dumps(plan, ensure_ascii=False, indent=2))

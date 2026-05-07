@@ -22,6 +22,11 @@ pipelines:
   critical-path: disabled
   scrum-agile: disabled
 
+agent_overrides:
+  tech-writer:
+    source: agent-overrides/tech-writer.md
+    role_status: core
+
 content_scaffold: content-scaffold/
 doc_root: doc-root.yaml
 

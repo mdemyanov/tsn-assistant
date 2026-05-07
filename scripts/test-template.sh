@@ -347,6 +347,7 @@ RC=$?
 assert "T-INIT-PROFILE-KB: exit 0" "[ \"$RC\" = '0' ]"
 assert "T-INIT-PROFILE-KB: 30-runbooks существует" "[ -d content/30-runbooks ]"
 assert "T-INIT-PROFILE-KB: 30-requirements удалена" "[ ! -d content/30-requirements ]"
+assert "T-W3-A7: 00-project удалена для kb-team" "[ ! -d content/00-project ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_INIT_KB"
 

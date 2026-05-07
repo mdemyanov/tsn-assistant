@@ -1,138 +1,101 @@
-# AGENTS.md — pg_vector_service
+# AGENTS.md — {{PROJECT_NAME}}
 
-Матрица ролей, режим исполнения и процесс самоулучшения команды AI-агентов проекта.
+Матрица ролей, режим исполнения, каталог pipelines и контракт самоулучшения команды AI-агентов проекта.
 
-## Роли и режим исполнения
+## Каталог ролей
 
-| Роль | Где исполняется | Модель | Команда | Артефакты |
-|------|-----------------|--------|---------|-----------|
-| **PM** | main-context | Opus | `/pm`, `/pm-review` | `content/00-project/roadmap.md`, координация |
-| **Researcher** | subagent | Sonnet | `/research` → `researcher-agent` | `content/10-domain/research/` |
-| **BA** | subagent | Sonnet | `/ba` → `ba-agent` | `content/30-requirements/` |
-| **SA** | subagent | Sonnet | `/sa` → `sa-agent` | `content/00-project/adr/`, `content/40-architecture/` |
-| **Dev** | subagent | Sonnet | `/dev` → `dev-agent` | `src/`, `content/60-implementation/` |
-| **DevOps** *(optional)* | subagent | Sonnet | `/devops` → `devops-agent` | `content/70-operations/` |
-| **ITSM-аналитик** *(optional)* | subagent | Sonnet (Opus по запросу) | `/itsm` → `itsm-analyst-agent` | `content/10-domain/itsm-reviews/` или inline-review |
+| Имя | Описание | Где исполняется | Модель | Промпт-файл | Slash-команды |
+|-----|----------|-----------------|--------|-------------|---------------|
+| pm | Координатор/orchestrator | main | Opus | (main, не subagent) | `/pm` |
+| researcher | Контекст-сборщик | subagent | Sonnet | `.claude/plugins/project/agents/researcher-agent.md` | `/research` |
+| ba | Бизнес-аналитик; режимы: author, acceptance | subagent | Sonnet | `.claude/plugins/project/agents/ba-agent.md` | `/ba`, `/ba --mode=acceptance` |
+| sa | Архитектор / системный аналитик | subagent | Sonnet | `.claude/plugins/project/agents/sa-agent.md` | `/sa` |
+| dev | TDD-разработчик | subagent | Sonnet | `.claude/plugins/project/agents/dev-agent.md` | `/dev` |
+| devops | Эксплуатация (опц.) | subagent | Sonnet | `.claude/plugins/project/agents/devops-agent.md` | `/devops` |
+| qa | QA с режимами author/runner | subagent | Sonnet | `.claude/plugins/project/agents/qa-author-agent.md` (AT) + `.claude/plugins/project/agents/qa-runner-agent.md` (Tester) | `/qa --mode=author`, `/qa --mode=runner` |
+| tech-writer | Документатор (secondary editor / primary author per profile) | subagent | Sonnet | `.claude/plugins/project/agents/tech-writer-agent.md` | `/tech-writer` |
+| devsecops | Embedded security в Dev (opt-in) | subagent | Sonnet | `.claude/plugins/project/agents/devsecops-agent.md` | `/devsecops` |
+| compliance | Research compliance (opt-in) | subagent | Sonnet | `.claude/plugins/project/agents/compliance-agent.md` | `/compliance` |
 
-**Почему так:** PM-координация живёт в main-context, чтобы не раздувать контекст субагентов. Ролевая работа (BA/SA/Dev/DevOps/Researcher) вытесняется в субагенты на более дешёвой модели — экономия LLM-бюджета на типичной сессии.
+**Почему так:** PM-координация живёт в main-context, чтобы не раздувать контекст субагентов. Ролевая работа вытесняется в субагенты на более дешёвой модели — экономия LLM-бюджета. DevOps/DevSecOps/Compliance/Tech Writer — opt-in (включаются профилем или явным запросом).
 
-DevOps помечен как **optional** — для проектов без явной инфра-составляющей не вызывается.
+## Контракт вызова субагента (универсальный)
 
-## Поток работы (Researcher → BA → SA → Dev → DevOps)
-
-Канонический порядок для новой фичи (main-PM оркеструет):
-
-1. **Researcher** *(опционально)* — собирает контекст по теме (домен, конкуренты, литература) → `content/10-domain/research/<тема>.md`
-2. **BA** формирует требования: JTBD, бизнес-правила, приёмочные критерии → `content/30-requirements/`
-3. **SA** проектирует: ADR (если нужно), компоненты/границы, dataflow → `content/00-project/adr/`, `content/40-architecture/`
-4. **Dev** реализует по TDD: failing test → реализация → зелёный → commit. Соблюдает архитектуру SA.
-5. **DevOps** *(если нужно)* — деплой, runbook, мониторинг → `content/70-operations/`
-
-**PM** координирует на каждом этапе: приоритизирует, разрешает блокеры, запускает `/pm-review` перед merge в `public`.
-
-**Опциональный консультант — ITSM-аналитик** (`/itsm` → `itsm-analyst-agent`) доступен на любом этапе: BA при формулировке JTBD, SA при выборе паттернов, PM при оценке реалистичности UC. Не блокирует и не заменяет основные роли. Вызывается явно по триггерам: появление ITSM-терминов (incident/problem/KB/SLA/RCA), сомнения в реалистичности сценария, выбор AI-сигналов, терминологические споры. Артефакты — Gramax-комментарии или mini-review в `content/10-domain/itsm-reviews/`; **в `content/30-requirements/`, `content/00-project/adr/`, `content/40-architecture/` не пишет**. Спецификация роли: `content/30-requirements/roles/itsm-analyst.md`.
-
-Ветвление: `private` — рабочая ветка; `public` — публикация в Gramax после ревью PM.
-
-## Вызов субагентов — контракт
-
-При запуске `/research`, `/ba`, `/sa`, `/dev`, `/devops` main-PM **обязан** передать субагенту:
+При запуске любой роли (через `/<command>` или Task tool) передавай:
 
 1. **Цель** одной фразой.
-2. **Входные файлы** (пути к требованиям / ADR / коду / источникам) — субагент сам прочитает.
-3. **Ожидаемый артефакт** — какой файл должен появиться или быть изменён.
-4. **Критерии приёмки** — как понять, что задача выполнена.
+2. **Входные файлы** — пути к контексту (требование, ADR, код, источники). Субагент сам прочитает.
+3. **Ожидаемый артефакт** — какой файл должен появиться/измениться.
+4. **Критерии приёмки** — как проверить, что задача выполнена.
 
 Пример корректного prompt'а для `/dev`:
 
 ```
 Цель: реализовать UserSessionRepository по архитектурной спецификации.
-Входы: content/40-architecture/sessions.md, content/30-requirements/user-sessions.md
-Артефакт: src/repositories/user_session.py + tests/test_user_session.py
-Критерии: pytest зелёный, типы аннотированы, метод ≤20 строк, AC из требования покрыты тестами.
+Входы: content/40-architecture/sessions.md, content/30-requirements/user-sessions.md, tests/auth/test_user_session.py (failing stubs от qa-author)
+Артефакт: src/repositories/user_session.py
+Критерии: pytest зелёный, типы аннотированы, метод ≤20 строк, AC из требования покрыты тестами от qa-author.
 ```
 
 Субагент **не ищет контекст «вокруг»** — работает по явно переданному скопу.
 
-### Особенность вызова `/itsm`
+(Полные prompt'ы — в `.claude/plugins/project/agents/<role>-agent.md`.)
 
-ITSM-аналитик — консультативная роль, артефакт ≠ требование/ADR/архитектура. В prompt'е укажи:
+## Матрица «роль × профиль»
 
-1. **Цель** — что оценить с точки зрения ITSM-методологии (например, «валидировать JTBD UC-S2 на реалистичность single-comment signal»).
-2. **Кто потребитель ответа** — BA / SA / PM (влияет на формат рекомендации).
-3. **Входные файлы** — конкретный объект ревью (UC / ADR / фрагмент архитектуры) + связанные артефакты, упомянутые явно.
-4. **Ожидаемый формат**: inline-ответ / Gramax-комментарий / mini-review (только для сложных кейсов с фиксацией).
-5. **НЕ запрашивай**: правок в `content/30-requirements/`, `content/00-project/adr/`, `content/40-architecture/`; web-search / ctx7 (это `/research`).
+| Роль | project | product | kb-product | kb-team | custom | methodology | course |
+|------|---------|---------|-----------|---------|--------|-------------|--------|
+| pm | core | core | core | core | core | core | core |
+| researcher | optional | optional | optional | optional | optional | optional | optional |
+| ba | core | core | optional | disabled | optional | disabled | optional |
+| sa | core | core | disabled | disabled | optional | disabled | disabled |
+| dev | core | core | disabled | disabled | optional | disabled | disabled |
+| devops | optional | optional | disabled | core | optional | disabled | disabled |
+| qa | core | core | disabled | disabled | optional | disabled | disabled |
+| tech-writer | optional | optional | core | core | optional | core | core |
+| devsecops | optional | optional | disabled | disabled | optional | disabled | disabled |
+| compliance | optional | optional | optional | optional | optional | optional | optional |
 
-Пример корректного prompt'а для `/itsm`:
+Эта матрица — derived из manifest'ов в `docs/overlays/profiles/<name>/manifest.yaml` (поле `subagents`). Ручная синхронизация поддерживается `validate-profile.py` (M4).
 
-```
-Цель: валидировать JTBD UC-S2 «поиск похожих заявок по тексту одного комментария»
-       на реалистичность сигнала с точки зрения практики Service Desk.
-Потребитель: BA (применит рекомендации в правках UC-S2).
-Входы: content/30-requirements/functional/uc-s2-find-similar-by-comments.md,
-       content/30-requirements/roles/itsm-analyst.md
-Формат: Gramax-комментарий к UC-S2 + краткий inline-ответ в чате.
-Критерии: оценка single-comment vs composite signal с references на
-          ServiceNow Predictive Intelligence или KCS v6.
-```
+## Каталог pipelines
 
-## Шаблон декомпозиции фичи (для main-PM)
+| Pipeline | Назначение | Slash-команда | Артефакты | Worktree |
+|----------|------------|---------------|-----------|----------|
+| project-planning | Декомпозиция эпика на задачи + roadmap | `/pipelines/project-planning <epic>` | `content/00-project/plans/<epic>.md` | per-pipeline |
+| ba-acceptance | Gate проверка AC ↔ реализация | `/pipelines/ba-acceptance <req>` | acceptance log в требовании | inline в epic-worktree |
+| critical-path | Анализ зависимостей задач | `/pipelines/critical-path <epic>` | `content/00-project/critical-path/<epic>.md` | inline |
+| scrum-agile | (stub Wave 3+) | (планируется) | (планируется) | per-pipeline |
 
-Каждая фича проходит фазы: исследование (опц.) → анализ (BA) → проектирование (SA) → реализация (Dev) → развёртывание (DevOps).
+## Pipeline-orchestration model
 
-```markdown
-## Фича: [Название]
+- PM создаёт worktree через `superpowers:using-git-worktrees`: `git worktree add .worktrees/epic-<slug> -b epic-<slug> private`
+- В пределах одной pipeline: subagent'ы работают последовательно в одной и той же worktree
+- Параллельные стадии (несколько Dev-задач, Researcher + BA одновременно): через `superpowers:dispatching-parallel-agents` (child worktrees → merge обратно в epic-worktree)
+- После успешного pipeline'а PM делает PR `epic-<slug>` → `private` → (после `/pm-review`) → `public`
 
-### Контекст
-[Зачем нужно, какую проблему решает]
+## Поток работы (канонический порядок)
 
-### Затронутые области
-[Bounded Contexts / модули / компоненты]
+Researcher (опц.) → BA → SA → QA-author → Dev → QA-runner → BA-acceptance gate → DevOps (если deploy)
 
-### Фаза roadmap
-[PoC / MVP / Pilot / Production]
+PM координирует на каждом этапе: приоритизирует, разрешает блокеры, запускает `/pm-review` перед merge в `public`.
 
-### Задачи
-- [ ] RES-XXX: [исследовать тему] → `content/10-domain/research/<file>.md` — `/research <prompt>`  *(опционально)*
-- [ ] BA-XXX: [сформулировать требования] → `content/30-requirements/<file>.md` — `/ba <prompt>`
-- [ ] ITSM-XXX: [ITSM-валидация UC / терминологии / AI-сигналов] → inline или `content/10-domain/itsm-reviews/<slug>.md` — `/itsm <prompt>`  *(опционально, рекомендован при появлении ITSM-терминов: incident/problem/KB/SLA/RCA)*
-- [ ] SA-XXX: [спроектировать] — зависит от BA-XXX → `content/40-architecture/<file>.md` — `/sa <prompt>`
-- [ ] DEV-XXX: [реализовать] — зависит от SA-XXX — `/dev <prompt>`
-- [ ] OPS-XXX: [runbook/deploy] — зависит от DEV-XXX — `/devops <prompt>`  *(если нужно)*
+DevSecOps активируется в Dev-фазе при flag'е (профиль или явный запрос); Compliance — research-mode по запросу.
 
-### Зависимости
-RES → BA → (ITSM, опц.) → SA → (ITSM, опц.) → DEV → OPS
+Ветвление: `private` — рабочая ветка; `public` — публикация в Gramax после ревью PM.
 
-### Риски
-[Что может пойти не так]
+## Self-improvement
 
-### GO-критерии milestone
-- Tests зелёные (если есть код)
-- `/pm-review` без ошибок
-- Acceptance Criteria из BA-артефакта пройдены
-- Runbook (если есть DevOps-задача) написан
-```
+- `docs/lessons-learned.md` — append-only журнал
+- Субагенты сохраняют находки в auto-memory (типы: `reference`, `project`, `feedback`)
+- `/pm-review` читает lessons + memory и предлагает обновления `CLAUDE.md` / промтов агентов
 
-**Milestone закрывается** только при зелёных тестах + чистом `/pm-review` + выполненных AC. «Почти готово» = не закрыт.
+## Красные линии (универсальные)
 
-## Матрица эскалации (для main-PM)
-
-| Ситуация | К кому | Действие |
-|----------|--------|----------|
-| Неясные требования | BA | `/ba уточнить [вопрос]` |
-| Архитектурный trade-off | SA | `/sa оценить [варианты]` |
-| Технический блокер | Dev | `/dev исследовать [проблема]` |
-| Инфраструктурный вопрос | DevOps | `/devops оценить [задача]` |
-| ITSM-методология / реалистичность UC | ITSM-аналитик | `/itsm review [path]` или `/itsm [вопрос]` |
-| Бюджет / стейкхолдер-доступ | Спонсор проекта | Эскалация в отчёте |
-
-## Процесс самоулучшения (Retrospective)
-
-После каждой завершённой задачи субагент:
-
-1. Если встретил **неочевидный факт** об инфраструктуре/процессе/инструменте → сохраняет в auto-memory (типы: `reference`, `project`, `feedback`).
-2. Если есть **урок для команды** → дописывает строку в `docs/lessons-learned.md`: `| дата | агент | контекст | наблюдение | действие |`.
-3. Если ничего значимого — ничего не пишет.
-
-`/pm-review` периодически читает `docs/lessons-learned.md` и memory, предлагает обновления CLAUDE.md / промтов агентов / глоссария.
+- НЕ публиковать секреты (`.env`, токены, API-ключи, credentials)
+- НЕ включать PII (реальные имена, контакты, персональные данные сотрудников/клиентов)
+- НЕ менять `.doc-root.yaml` и `.gramax/` без согласования (через SA + ADR)
+- НЕ создавать статьи в `content/` без обязательных properties (см. `.doc-root.yaml`)
+- НЕ принимать задачи `/dev` без предшествующего артефакта SA (`content/40-architecture/` или ADR)
+- НЕ передавать тесты из Dev в qa-runner до прохождения qa-author stub'ов (TDD-цепочка обязательна)
+- Tests/линтеры (если в проекте есть) — зелёные перед commit

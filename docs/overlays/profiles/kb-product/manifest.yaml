@@ -1,0 +1,16 @@
+schema_version: 1
+name: kb-product
+description: Документация продукта/процесса для внешних читателей
+status: stub
+subagents:
+  pm: core
+  tech-writer: core
+  researcher: optional
+  ba: optional
+  compliance: optional
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: ["*"]
+maintainer: project_template

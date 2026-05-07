@@ -106,10 +106,50 @@ model: sonnet
 - `content/40-architecture/` — общий дизайн, модели данных, интеграции
 - `content/00-project/adr/` — новые ADR при значимых решениях
 
+## Контракт с QA-author (Wave 2)
+
+После проектирования архитектуры SA **не пишет тесты сам** — это работа QA-author. Передаёшь QA-author'у:
+
+1. **Acceptance Criteria из требования** (полный список AC из BA-артефакта).
+2. **Архитектурный контекст** — какие компоненты задействованы, какие интеграции, какие boundary условия (это влияет на tests-pyramid: что unit, что integration, что e2e).
+3. **Edge cases / boundary conditions из проектирования** — error paths, retry logic, timeouts, конкуренция, rate-limits, инварианты данных. То что ты выявил при проектировании, но что не обязательно в AC.
+4. **Test-pyramid рекомендация** — для каждой группы AC: на каком уровне тестировать (unit / integration / e2e). Например: «AC-001/002 (бизнес-правила) — unit; AC-003 (DB transaction) — integration; AC-004 (полный auth flow) — e2e».
+
+**Формат передачи** — отдельная секция в архитектурном артефакте `content/40-architecture/<file>.md`:
+
+````markdown
+## Контракт с QA-author
+
+**AC (полный список из требования):**
+- AC-001: ...
+- AC-002: ...
+
+**Архитектурный контекст для тестов:**
+- Компоненты: AuthService, UserSessionRepository, TokenStore
+- Интеграции: Redis (session store), JWT verification
+- Trust boundaries: HTTP entry → AuthService (validate) → repos
+
+**Edge cases / boundary conditions:**
+- Concurrent session creation (race condition; нужен test integration с реальным Redis)
+- Token expiry edge: 1 second before expiry — should пройти
+- Network partition к Redis — fallback policy
+
+**Test-pyramid рекомендация:**
+| AC group | Уровень | Обоснование |
+|----------|---------|-------------|
+| AC-001/002 (валидация input) | unit | чистая бизнес-логика |
+| AC-003/004 (session lifecycle) | integration | реальный Redis |
+| AC-005 (полный auth flow) | e2e | полная интеграция HTTP→Redis→DB |
+````
+
+После SA — handoff QA-author'у. **Не пиши test stubs сам — даже если знаешь как.** Если test design кажется неочевидным — fix архитектуру, чтобы было очевидно.
+
 ## Красные линии
 
 - НЕ пиши код реализации (задача Dev)
 - НЕ формулируй бизнес-требования (задача BA)
+- НЕ пиши test stubs или test design — это QA-author. Если твой передающий контекст недостаточен для QA-author — улучши архитектуру или AC.
+- НЕ выбирай тестовый фреймворк за QA-author — указывай только уровень (unit/integration/e2e), фреймворк QA-author подберёт под стек проекта.
 - НЕ публикуй credentials / реальные URL внутренних систем
 - ВСЕГДА укажи NFR mapping (как требования из BA закрываются в архитектуре)
 - ВСЕГДА проверь совместимость с существующей архитектурой
@@ -121,60 +161,3 @@ model: sonnet
 1. Неочевидность в инструменте / API / методологии → auto-memory (`reference`/`project`).
 2. Урок для команды → `docs/lessons-learned.md`.
 3. Нечего — ничего не пиши.
-
-<!-- OVERLAY:naumen-smp:start -->
-## SMP-расширение
-
-### DDD → SMP маппинг
-
-| DDD | Реализация в SMP |
-|---|---|
-| Bounded Context | Сценарий A-F (или модуль) |
-| Aggregate | SMP-объект (FQN) |
-| Domain Service | HQL-запрос или REST-операция |
-| Repository | `api.db.query(hql)` или REST `/find/{fqn}` |
-| Anti-Corruption Layer | Mapper SMP JSON → DTO в `adapters/smp/` |
-| Domain Event | SMP action / status change |
-| Invariant | Guard в `core/` (вне зависимости от SMP) |
-
-### Шаблон спеки MCP-инструмента (если проект делает MCP-tools)
-
-```markdown
-### Tool: [name]
-**Описание:** [...]  **Сценарий:** [A-F]  **SMP Endpoint:** [REST / HQL]
-**Parameters:** | Параметр | Тип | Обязательный | Описание |
-**Response:**   | Поле    | Тип | Описание |
-**Token estimate:** ~N input + ~M output  **Rate limit:** 60 req/min/тенант
-**Error handling:** 404 → пустой ответ, 429 → retry с backoff, 5xx → circuit breaker
-```
-
-### Hexagonal Architecture (если применяется)
-
-- `core/` — чистое ядро, **не импортирует** `ru.naumen.*` (кроме `core.*`/`ports.*`)
-- `ports/` — интерфейсы (inbound/outbound)
-- `adapters/smp/` — единственное место для `@InjectApi`
-- `adapters/transport/` — JSON-RPC / MCP transport
-- Нарушение boundary — ловится через `CoreBoundarySpec` или аналогичный архитектурный тест
-
-### ADR-trail check (внешние ADR)
-
-При ссылке на внешний ADR N (например, `Devel/naumen-smp-mcp/content/00-project/adr/016-*.md`) **обязательно** проверить ADR N+1..N+5 в той же теме — более поздний ADR может расширять / supersede'ить указанный прецедент.
-
-### Version-dependent statements
-
-Перед правкой «версия X» в статье — классифицируй утверждение:
-- **Исторический факт** — «верифицировано на стенде (версия Y) 2026-DD-MM» — сохраняй дату+версию+стенд, добавляй пометку «текущая версия — vZ, см. ADR-NNN».
-- **Целевая декларация** — «работает на версии Y» — заменяй версию на актуальную.
-
-Замена без классификации ломает историю.
-
-### «Частично closed» статус (для предложений / features)
-
-При указании статуса «частично closed» — **всегда** разделяй: что закрыто на уровне framework, что остаётся ответственностью разработчика bundle / cookbook. Без разграничения разработчики воспринимают закрытие как снятие red-line.
-
-### Cross-каталожные Gramax-ссылки
-
-- Внутри текущего Gramax-каталога (`content/`) — markdown `[text](path)` работает.
-- На файлы вне Gramax-каталога (например, `Devel/naumen-smp-mcp/content/...`) — **только inline code** `` `path/to/file.md` ``. Gramax не резолвит cross-каталожные ссылки.
-- Исключение — публичный HTTP URL.
-<!-- OVERLAY:naumen-smp:end -->

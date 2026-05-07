@@ -1,8 +1,17 @@
+code: {{PROJECT_CODE}}
+title: {{PROJECT_NAME}}
+description: {{PROJECT_DESCRIPTION}}
+style: blue-green
+language: ru
+supportedLanguages:
+  - ru
 syntax: XML
 
 properties:
   - name: Тип контента
-    type: enum
+    type: Enum
+    style: blue
+    icon: file-text
     values:
       - Требование
       - Архитектура
@@ -11,35 +20,28 @@ properties:
       - Исследование
       - Глоссарий
       - Прочее
-    required: true
 
   - name: Фаза
-    type: enum
+    type: Enum
+    style: green
+    icon: layers
     values:
       - PoC
       - MVP
       - Pilot
       - Production
-    required: true
 
   - name: Статус
-    type: enum
+    type: Enum
+    style: orange
+    icon: check-circle
     values:
       - Draft
       - Review
       - Approved
       - Superseded
-    required: true
 
-# OVERLAY:naumen-smp:start
-  - name: Сценарий
-    type: enum
-    values:
-      - A-Workload
-      - B-Quality
-      - C-Reporting
-      - D-Catalog
-      - E-KB
-      - F-Patterns
-    required: false
-# OVERLAY:naumen-smp:end
+filterProperties: [Тип контента, Фаза, Статус]
+
+editors:
+  - {{EDITOR_EMAIL}}

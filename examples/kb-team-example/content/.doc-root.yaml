@@ -1,0 +1,33 @@
+title: Example Team KB — KB команды
+description: Demo team KB for project-template
+syntax: XML
+language: ru
+editors:
+  - owner@example.com
+
+properties:
+  - name: Тип контента
+    type: Enum
+    style: blue
+    icon: file-text
+    values:
+      - Onboarding
+      - Runbook
+      - Role
+      - Incident
+      - Эскалация
+      - Глоссарий
+      - Прочее
+
+  - name: Owner
+    type: String
+    style: yellow
+    icon: user
+
+  - name: Статус
+    type: Enum
+    style: green
+    icon: check
+    values: [Draft, Review, Approved, Archived]
+
+filterProperties: [Тип контента, Owner, Статус]

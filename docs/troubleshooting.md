@@ -107,6 +107,46 @@ FAQ-стиль guide частых проблем и решений.
 
 **Решение:** Использовать `/usr/bin/env bash` (как в скриптах). Если функция реально 4+ — открыть issue (это W2 контракт — bash 3.2 compat).
 
+## Override edge cases
+
+### M11 error: «agent_overrides.X declared, but base file not found»
+
+**Причина:** В `manifest.yaml` объявлен `agent_overrides.X`, но `.claude/plugins/project/agents/X-agent.md` не существует.
+
+**Fix:**
+- Проверить имя роли в `extends:` — оно должно совпадать с именем файла base (без `-agent` suffix)
+- Если роль действительно новая — создать base prompt в `.claude/plugins/project/agents/`
+
+### M11 error: «extends 'X' but role is 'Y'»
+
+**Причина:** Frontmatter override содержит `extends: X`, но override-файл лежит под именем роли `Y` (например, `agent-overrides/tech-writer.md` с `extends: ba`).
+
+**Fix:**
+- Поменять `extends:` на `Y` (имя роли)
+- Или переместить файл под именем `agent-overrides/X.md`
+
+### Override не применяется — секция выглядит как в base
+
+**Причина:** Heading override не совпадает byte-в-byte с heading base (whitespace, regular vs. сurly quotes, en-dash vs. hyphen, etc.).
+
+**Fix:**
+- Сравнить `## Heading` в base и override через `diff <(grep '^##' base.md) <(grep '^##' override.md)` — выявит mismatch
+- Heading match — exact (case + whitespace + punctuation чувствительны)
+
+### `{{super}}` не подставляется
+
+**Причина 1:** `{{super}}` в секции, отсутствующей в base — M11.5 даёт error до commit'а.
+
+**Причина 2:** Опечатка в placeholder. Правильно: `{{super}}` (двойные фигурные скобки, lowercase, no spaces).
+
+### После init resolved tech-writer.md не содержит override
+
+**Причина 1:** Profile manifest не имеет `agent_overrides:` блока. Проверить `cat docs/overlays/profiles/<profile>/manifest.yaml | grep agent_overrides`.
+
+**Причина 2:** Roles в `subagents.X: disabled` — resolver пропускает disabled роли. M11.4 поймает inconsistency.
+
+**Причина 3:** IDE кэширует старую версию prompt. Restart Claude Code session.
+
 ## Не нашёл свой случай?
 
 1. Посмотри `docs/lessons-learned.md` — может, было раньше.

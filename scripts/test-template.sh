@@ -386,6 +386,7 @@ assert "T-W4a-P4-override: GENERATED marker в resolved файле" "grep -qF 'G
 
 # T-W4a-P4-noise: internal-only разделы удалены (op: delete)
 assert "T-W4a-P4-noise: 00-project удалена" "[ ! -d content/00-project ]"
+assert "T-W4a-P4-noise: 10-domain удалена" "[ ! -d content/10-domain ]"
 assert "T-W4a-P4-noise: 30-requirements удалена" "[ ! -d content/30-requirements ]"
 assert "T-W4a-P4-noise: 40-architecture удалена" "[ ! -d content/40-architecture ]"
 assert "T-W4a-P4-noise: 60-implementation удалена" "[ ! -d content/60-implementation ]"

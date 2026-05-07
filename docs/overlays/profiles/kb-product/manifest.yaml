@@ -26,6 +26,9 @@ operations:
     target: content/00-project/
     reason: "kb-product не использует delivery-структуру"
   - op: delete
+    target: content/10-domain/
+    reason: "10-domain — internal team knowledge, не для customer docs"
+  - op: delete
     target: content/30-requirements/
     reason: "customer docs не имеют функциональных требований"
   - op: delete

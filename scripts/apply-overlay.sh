@@ -245,6 +245,34 @@ is_safe_to_delete() {
   return 1
 }
 
+do_resolve_agents() {
+  # W4a-T12: invoke _resolve_agents.py to merge base prompts + per-profile overrides
+  # into resolved prompts in target dir. Op emitted by _apply_profile.py when manifest
+  # contains agent_overrides:.
+  # Args (consistent с другими op_* — реально не используются helper'ом, у которого
+  # своя логика resolve через manifest):
+  #   $1 — profile_dir (passed для symmetry; helper читает manifest сам)
+  #   $2 — source (relative path "agent-overrides/" — informational)
+  #   $3 — target (target dir для resolved prompts; e.g. ".claude/plugins/project/agents/")
+  #   $4 — reason (human-readable, для логов)
+  local profile_dir="$1" source="$2" target="$3" reason="$4"
+
+  echo "[RESOLVE_AGENTS] $source → $target  ($reason)"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "  [DRY-RUN] would invoke _resolve_agents.py"
+    return 0
+  fi
+
+  python3 scripts/_resolve_agents.py \
+    "$profile_dir" \
+    --base-dir ".claude/plugins/project/agents/" \
+    --target-dir "$target" \
+    || { echo "ERROR: _resolve_agents.py failed для $profile_dir" >&2; exit 1; }
+
+  echo "  ✓ resolved"
+}
+
 op_delete() {
   local target="$1" reason="$2" verdict="${3:-}"
 
@@ -371,10 +399,11 @@ for op in plan["ops"]:
   while IFS=$'\x1f' read -r op source target reason verdict; do
     [[ -z "$op" ]] && continue
     case "$op" in
-      add)     op_add "$profile_dir" "$source" "$target" "$reason" ;;
-      replace) op_replace "$profile_dir" "$source" "$target" "$reason" ;;
-      delete)  op_delete "$target" "$reason" "$verdict" ;;
-      *)       echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
+      add)            op_add "$profile_dir" "$source" "$target" "$reason" ;;
+      replace)        op_replace "$profile_dir" "$source" "$target" "$reason" ;;
+      delete)         op_delete "$target" "$reason" "$verdict" ;;
+      resolve_agents) do_resolve_agents "$profile_dir" "$source" "$target" "$reason" ;;  # W4a-T12
+      *)              echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
     esac
   done <<< "$plan_tsv"
 }

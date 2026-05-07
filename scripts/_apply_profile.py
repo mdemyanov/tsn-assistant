@@ -27,16 +27,18 @@ from _validate_common import parse_yaml_file, require_yaml  # noqa: E402
 BASELINE_CONTENT_MAX_BYTES = 500
 
 
+class ManifestError(Exception):
+    """Manifest load/parse error — caller should catch and exit cleanly."""
+
+
 def load_manifest(profile_dir: Path) -> dict:
-    """Читает manifest.yaml; exit 1 если parse failed или manifest отсутствует."""
+    """Читает manifest.yaml; raises ManifestError если parse failed или manifest отсутствует."""
     manifest_path = profile_dir / "manifest.yaml"
     if not manifest_path.exists():
-        print(f"ERROR: {manifest_path} не найден", file=sys.stderr)
-        sys.exit(1)
+        raise ManifestError(f"{manifest_path} не найден")
     manifest = parse_yaml_file(manifest_path)
     if manifest is None:
-        print(f"ERROR: {manifest_path}: invalid YAML", file=sys.stderr)
-        sys.exit(1)
+        raise ManifestError(f"{manifest_path}: invalid YAML")
     return manifest
 
 
@@ -89,7 +91,7 @@ def is_safe_to_delete(target: Path) -> bool:
     return True
 
 
-def compute_verdict(op: dict, init: bool, profile_dir: Path) -> str:
+def compute_verdict(op: dict, init: bool) -> str:
     """Возвращает verdict: 'safe', 'refuse', или 'add'/'replace'.
 
     NOTE: 'force-required' зарезервирован для Wave 4 (более гранулярный gate).
@@ -201,12 +203,14 @@ def emit_plan(manifest: dict, profile_dir: Path, init: bool) -> dict:
             # Skip malformed op entry; warn to stderr
             print(f"WARNING: skipping op without 'op' field: {op_decl}", file=sys.stderr)
             continue
+        # Strip newlines: multiline reason ломает \x1f TSV separator в bash consume
+        reason = (op_decl.get("reason") or "").replace("\n", " ").replace("\r", " ").strip()
         plan_ops.append({
             "op": op_type,
             "source": op_decl.get("source", ""),
             "target": op_decl.get("target", ""),
-            "reason": op_decl.get("reason", ""),
-            "verdict": compute_verdict(op_decl, init, profile_dir),
+            "reason": reason,
+            "verdict": compute_verdict(op_decl, init),
         })
     return {
         "profile": manifest.get("name", ""),
@@ -228,7 +232,11 @@ def main(argv: list[str]) -> int:
         print(f"ERROR: profile dir не существует: {profile_dir}", file=sys.stderr)
         return 1
 
-    manifest = load_manifest(profile_dir)
+    try:
+        manifest = load_manifest(profile_dir)
+    except ManifestError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
     apply_on_value_mutations(manifest)  # T6: env-driven mutations
     plan = emit_plan(manifest, profile_dir, args.init)
 

@@ -22,24 +22,6 @@ content_scaffold: content-scaffold/
 doc_root: doc-root.yaml
 
 operations:
-  - op: delete
-    target: content/00-project/
-    reason: "kb-product не использует delivery-структуру"
-  - op: delete
-    target: content/10-domain/
-    reason: "10-domain — internal team knowledge, не для customer docs"
-  - op: delete
-    target: content/30-requirements/
-    reason: "customer docs не имеют функциональных требований"
-  - op: delete
-    target: content/40-architecture/
-    reason: "архитектура продукта не публикуется наружу"
-  - op: delete
-    target: content/60-implementation/
-    reason: "нет реализации"
-  - op: delete
-    target: content/70-operations/
-    reason: "operations не для внешнего читателя"
   - op: add
     source: content-scaffold/
     target: content/

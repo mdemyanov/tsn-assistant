@@ -1,0 +1,42 @@
+title: "Example Methodology — Методология"
+description: Пример playbook'а методологии
+syntax: XML
+language: ru
+editors:
+  - example@methodology.com
+
+properties:
+  - name: Тип контента
+    type: Enum
+    style: blue
+    icon: file-text
+    values:
+      - Принцип
+      - Практика
+      - Playbook
+      - Шаблон
+      - Case Study
+    required: true
+
+  - name: Статус
+    type: Enum
+    style: green
+    icon: check
+    values: [Draft, Review, Approved, Archived]
+    required: true
+
+  - name: Уровень
+    type: Enum
+    style: purple
+    icon: layers
+    values: [Strategic, Tactical, Operational]
+    required: false
+
+  - name: Область применения
+    type: Enum
+    style: yellow
+    icon: tag
+    values: [Engineering, Design, Operations, All]
+    required: false
+
+filterProperties: [Тип контента, Статус, Уровень, Область применения]

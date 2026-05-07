@@ -179,8 +179,14 @@ op_add() {
 
   mkdir -p "$target"
   if [[ -d "$source_path" ]]; then
-    cp -r "$source_path"/* "$target"/ 2>/dev/null || true
-    cp -r "$source_path"/.[!.]* "$target"/ 2>/dev/null || true  # hidden files
+    # A5: nullglob+dotglob — без явного отдельного hidden-glob, без шума при отсутствии файлов
+    (
+      shopt -s nullglob dotglob
+      files=("$source_path"/*)
+      if (( ${#files[@]} > 0 )); then
+        cp -r "${files[@]}" "$target"/
+      fi
+    )
   else
     cp "$source_path" "$target"
   fi

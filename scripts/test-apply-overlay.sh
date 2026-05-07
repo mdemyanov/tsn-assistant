@@ -171,6 +171,46 @@ cd "$OLDPWD_T10B"
 rm -rf "$TMP_T10B"
 assert "T-W4b-T10b: ProfileError exception type (не SystemExit)" "[ \"$result\" = 'OK_ProfileError' ]"
 
+# ===== Test T-W4b-T12: multiline reason stripped in JSON plan =====
+
+echo "[T-W4b-T12] multiline reason → стриплен в TSV"
+TMP_T12=$(mktemp -d)
+mkdir -p "$TMP_T12/docs/overlays/profiles/test-multiline-reason"
+cat > "$TMP_T12/docs/overlays/profiles/test-multiline-reason/manifest.yaml" <<'EOF'
+schema_version: 1
+name: test-multiline-reason
+description: multiline reason tests TSV emission
+audience: tests
+status: stub
+subagents: {}
+pipelines: {}
+content_scaffold: scaffold/
+operations:
+  - op: add
+    source: scaffold/
+    target: content/
+    reason: |
+      first line
+      second line
+      third
+init_prompts: []
+compatible_stacks: []
+maintainer: tests
+EOF
+mkdir -p "$TMP_T12/docs/overlays/profiles/test-multiline-reason/scaffold"
+echo "# scaffold" > "$TMP_T12/docs/overlays/profiles/test-multiline-reason/scaffold/_index.md"
+ln -s "$TMP/scripts" "$TMP_T12/scripts"
+OLDPWD_T12="$PWD"
+cd "$TMP_T12"
+plan=$(python3 scripts/_apply_profile.py docs/overlays/profiles/test-multiline-reason)
+cd "$OLDPWD_T12"
+rm -rf "$TMP_T12"
+
+# Reason в JSON не должен содержать \n (multiline стрипнут в одну строку)
+reason_field=$(echo "$plan" | python3 -c "import json, sys; p=json.load(sys.stdin); print(p['ops'][0]['reason'])")
+assert "T-W4b-T12: multiline reason одной строкой" "[ \"\$(echo \"$reason_field\" | wc -l | tr -d ' ')\" = '1' ]"
+assert "T-W4b-T12: multiline reason содержит части" "echo \"$reason_field\" | grep -q 'first line.*second line.*third'"
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

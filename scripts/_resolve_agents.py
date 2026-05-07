@@ -216,13 +216,49 @@ def main() -> int:
     for role, status in (manifest.get("subagents", {}) or {}).items():
         if status == "disabled":
             continue
+
+        # Special-case: qa role is split into qa-author + qa-runner (no qa-agent.md exists)
+        if role == "qa" and not (args.base_dir / "qa-agent.md").exists():
+            override_path: Optional[Path] = None
+            if role in overrides:
+                override_entry = overrides[role]
+                if not isinstance(override_entry, dict):
+                    override_entry = {}
+                source = override_entry.get("source")
+                if not source:
+                    print(f"error: agent_overrides.{role} missing 'source' field в manifest",
+                          file=sys.stderr)
+                    return 1
+                override_path = profile_dir / source
+                if not override_path.exists():
+                    print(f"error: override not found: {override_path}", file=sys.stderr)
+                    return 1
+
+            for qa_variant in ["qa-author", "qa-runner"]:
+                qa_base = args.base_dir / f"{qa_variant}-agent.md"
+                if not qa_base.exists():
+                    print(f"error: base prompt not found: {qa_base}", file=sys.stderr)
+                    return 1
+                if override_path is not None:
+                    try:
+                        qa_resolved = merge_delta(qa_base, override_path)
+                    except OverrideError as e:
+                        print(f"error: {e}", file=sys.stderr)
+                        return 1
+                else:
+                    qa_resolved = qa_base.read_text()
+                qa_marker = build_marker(profile_name, qa_variant, override_path)
+                qa_target = args.target_dir / f"{qa_variant}-agent.md"
+                qa_target.write_text(qa_marker + qa_resolved, encoding="utf-8")
+            continue
+
         base_path = args.base_dir / f"{role}-agent.md"
         if not base_path.exists():
             print(f"error: base prompt not found for role '{role}': {base_path}",
                   file=sys.stderr)
             return 1
 
-        override_path: Optional[Path] = None
+        override_path = None
         if role in overrides:
             override_entry = overrides[role]
             if not isinstance(override_entry, dict):

@@ -1,9 +1,9 @@
 ---
 order: 0
-title: Example Team KB — KB команды
+title: {{PROJECT_NAME}} — KB команды
 ---
 
-Demo team KB for project-template
+{{PROJECT_DESCRIPTION}}
 
 ## Навигация
 

@@ -366,17 +366,6 @@ apply_profile_overlay() {
     echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
   fi
 
-  # W4a-T2: ops_count emit'ится helper'ом в JSON top-level — без дополнительного python invocation
-  local ops_count
-  ops_count=$(echo "$plan_json" | python3 -c "import json, sys; print(json.load(sys.stdin)['ops_count'])")
-
-  if [[ "$ops_count" -eq 0 ]]; then
-    echo "No operations defined — done."
-    return 0
-  fi
-
-  echo "Operations to execute: $ops_count"
-
   # Convert JSON plan to delimited rows для bash-friendly iteration.
   # Используем ASCII Unit Separator (\x1f, non-whitespace) — bash IFS
   # с whitespace-разделителями (\t, space) схлопывает consecutive delimiters,
@@ -395,6 +384,22 @@ for op in plan["ops"]:
         op.get("verdict", ""),
     ]))
 ')
+
+  # W4b-T11: ops_count из TSV вместо отдельного python3 invocation
+  local ops_count
+  if [[ -z "$plan_tsv" ]]; then
+    ops_count=0
+  else
+    ops_count=$(printf '%s\n' "$plan_tsv" | grep -c -v '^$' || true)
+  fi
+
+  if [[ "$ops_count" -eq 0 ]]; then
+    echo "No operations defined — done."
+    return 0
+  fi
+
+  echo "Operations to execute: $ops_count"
+
 
   while IFS=$'\x1f' read -r op source target reason verdict; do
     [[ -z "$op" ]] && continue

@@ -6,7 +6,7 @@ properties:
     value: [Approved]
 ---
 
-# ADR-001: Agent overrides — base + delta merge
+# Agent overrides — base + delta merge
 
 ## Контекст
 

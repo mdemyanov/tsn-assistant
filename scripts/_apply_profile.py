@@ -212,6 +212,18 @@ def emit_plan(manifest: dict, init: bool) -> dict:
             "reason": reason,
             "verdict": compute_verdict(op_decl, init),
         })
+    # W4a-T11: emit resolve_agents step if profile declares agent_overrides
+    # Resolver pipeline: _resolve_agents.py reads manifest + overrides, writes resolved
+    # prompts to .claude/plugins/project/agents/. Bash consumes this op in apply-overlay.sh
+    # (op: resolve_agents → do_resolve_agents handler).
+    if manifest.get("agent_overrides"):
+        plan_ops.append({
+            "op": "resolve_agents",
+            "source": "agent-overrides/",
+            "target": ".claude/plugins/project/agents/",
+            "verdict": "safe",
+            "reason": "resolve agent prompts (base + delta)",
+        })
     return {
         "profile": manifest.get("name", ""),
         "init": init,

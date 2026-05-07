@@ -1,4 +1,4 @@
-title: "Example Product — Документация"
+title: "{{PROJECT_NAME}} — Документация"
 properties:
   - name: Тип контента
     type: enum

@@ -1,9 +1,4 @@
 {
-  "enabledPlugins": {
-    "gramax@ai-assistants": true,
-    "superpowers@claude-plugins-official": true,
-    "project@local": true
-  },
   "extraKnownMarketplaces": {
     "ai-assistants": {
       "source": {
@@ -20,8 +15,13 @@
     "local": {
       "source": {
         "source": "directory",
-        "path": "/Users/mdemyanov/Devel/pg_vector_service"
+        "path": "."
       }
     }
+  },
+  "enabledPlugins": {
+    "gramax@ai-assistants": true,
+    "superpowers@claude-plugins-official": true,
+    "project@local": true
   }
 }

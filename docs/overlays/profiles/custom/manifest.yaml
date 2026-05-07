@@ -1,0 +1,21 @@
+schema_version: 1
+name: custom
+description: Open-ended (research-каталог, личный wiki, методология) — собирай руками
+status: stub
+subagents:
+  pm: core
+  researcher: optional
+  ba: optional
+  sa: optional
+  dev: optional
+  devops: optional
+  qa: optional
+  tech-writer: optional
+  devsecops: optional
+  compliance: optional
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: ["*"]
+maintainer: project_template

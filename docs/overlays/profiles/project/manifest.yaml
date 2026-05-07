@@ -1,0 +1,39 @@
+schema_version: 1
+name: project
+description: Delivery-проект (Researcher → BA → SA → Dev → DevOps цепочка)
+audience: PM, команда разработки
+status: stable
+
+subagents:
+  pm: core
+  researcher: optional
+  ba: core
+  sa: core
+  dev: core
+  devops: optional
+  qa: core
+  tech-writer: optional
+  devsecops: optional
+  compliance: optional
+
+pipelines:
+  project-planning: enabled
+  ba-acceptance: enabled
+  critical-path: optional
+  scrum-agile: disabled
+
+content_scaffold: content-scaffold/
+doc_root: doc-root.yaml
+
+operations:
+  - op: add
+    source: content-scaffold/
+    target: content/
+    reason: "Базовый scaffold project-профиля"
+  - op: replace
+    source: doc-root.yaml
+    target: content/.doc-root.yaml
+    reason: "Профильная схема properties"
+
+compatible_stacks: [naumen-smp]
+maintainer: project_template

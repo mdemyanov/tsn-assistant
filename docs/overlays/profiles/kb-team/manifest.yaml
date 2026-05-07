@@ -1,0 +1,53 @@
+schema_version: 1
+name: kb-team
+description: Внутренняя командная KB (onboarding/runbook/role/incident)
+audience: Команда разработки, DevOps, on-call
+status: stable
+
+subagents:
+  pm: core
+  researcher: optional
+  ba: disabled
+  sa: disabled
+  dev: disabled
+  devops: core
+  qa: disabled
+  tech-writer: core
+  devsecops: optional
+  compliance: optional
+
+pipelines:
+  project-planning: optional
+  ba-acceptance: disabled
+  critical-path: disabled
+  scrum-agile: disabled
+
+content_scaffold: content-scaffold/
+doc_root: doc-root.yaml
+
+operations:
+  - op: delete
+    target: content/30-requirements/
+    reason: "kb-team не использует функциональные требования"
+  - op: delete
+    target: content/40-architecture/
+    reason: "kb-team не имеет компонентов архитектуры"
+  - op: delete
+    target: content/60-implementation/
+    reason: "нет реализации"
+  - op: delete
+    target: content/70-operations/
+    reason: "переносится в 30-runbooks/"
+  - op: add
+    source: content-scaffold/
+    target: content/
+    reason: "kb-team scaffold (10-domain, 20-onboarding, 30-runbooks, 40-roles, 50-incidents)"
+  - op: replace
+    source: doc-root.yaml
+    target: content/.doc-root.yaml
+    reason: "kb-team properties (Owner, Эскалация)"
+
+init_prompts: []
+
+compatible_stacks: []
+maintainer: project_template

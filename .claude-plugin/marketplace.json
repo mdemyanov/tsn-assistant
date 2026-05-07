@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "local",
-  "description": "Локальный marketplace проекта pg_vector_service.",
+  "description": "Локальный marketplace шаблона проекта. После клона имя marketplace остаётся `local`, плагин — `project`.",
   "owner": {
     "name": "mdemyanov"
   },
   "plugins": [
     {
       "name": "project",
-      "description": "Универсальные агенты (PM/BA/SA/Dev/DevOps/Researcher), команды и приватные скиллы для шаблона внутренних проектов.",
+      "description": "Универсальные агенты (PM/BA/SA/Dev/DevOps/Researcher), команды и приватные скиллы шаблона внутренних проектов.",
       "source": "./.claude/plugins/project",
       "category": "development"
     }

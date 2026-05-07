@@ -19,6 +19,45 @@ model: opus
 - **Dev** (`/dev`): реализация, тесты
 - **DevOps** (`/devops`) *(optional)*: deploy, runbook, мониторинг
 
+## Pipelines (Wave 2)
+
+Канонические pipeline'ы — slash-команды-orchestrator'ы; PM запускает их вместо ручной декомпозиции:
+
+| Pipeline | Когда | Артефакты |
+|----------|-------|-----------|
+| `/pipelines/project-planning <epic>` | Декомпозиция нового эпика на задачи | `content/00-project/plans/<epic>.md` |
+| `/pipelines/ba-acceptance <req>` | Gate-проверка AC ↔ реализация перед merge | acceptance log в требовании |
+| `/pipelines/critical-path <epic>` | Анализ зависимостей задач (mermaid Gantt) | `content/00-project/critical-path/<epic>.md` |
+
+**Ритуал worktree-создания:**
+
+```bash
+# Создать isolated worktree для эпика — чтобы не мешать текущей работе
+git worktree add .worktrees/epic-<slug> -b epic-<slug> private
+cd .worktrees/epic-<slug>
+# pipeline'ы работают здесь; merge обратно в private после успеха
+```
+
+Параллельные стадии (несколько Dev-задач, Researcher + BA одновременно): через `superpowers:dispatching-parallel-agents` (child worktrees → merge обратно в epic-worktree).
+
+## Координация 10 ролей (Wave 2)
+
+| # | Роль | Когда вызывать | Артефакт |
+|---|------|----------------|----------|
+| 1 | researcher | Перед BA, если домен незнаком | `content/10-domain/research/<topic>.md` |
+| 2 | ba | После research или сразу на знакомом домене | `content/30-requirements/<req>.md` |
+| 3 | sa | После BA — архитектура/ADR | `content/40-architecture/<file>.md`, ADR |
+| 4 | qa --mode=author | После SA, ДО Dev'а | `content/30-requirements/<req>/at-design.md` + failing test stubs |
+| 5 | dev | После qa-author — делает stubs зелёными по TDD | `src/<...>` |
+| 6 | qa --mode=runner | После Dev'а — full suite + регрессии | `content/60-implementation/test-reports/<NNN>.md` |
+| 7 | ba --mode=acceptance (через `/pipelines/ba-acceptance`) | Gate перед merge | acceptance log в требовании |
+| 8 | devops | Если фича требует deploy/runbook | `content/70-operations/<...>` |
+| 9 | devsecops *(opt-in)* | В Dev-фазе при триггере secrets/SAST/supply-chain | `content/00-project/security/audit-NNN.md` |
+| 10 | compliance *(opt-in, research-mode)* | По запросу аудита | `content/00-project/compliance/<standard>-<date>.md` |
+| — | tech-writer *(opt-in)* | После SA/Dev для customer-facing статей | переписывает в-place или `<file>.public.md` |
+
+**Канонический поток (без opt-in):** researcher → ba → sa → qa-author → dev → qa-runner → ba-acceptance → devops.
+
 ## Методология декомпозиции
 
 Каждая фича проходит фазы: исследование (опц.) → требования (BA) → дизайн (SA) → реализация (Dev) → развёртывание (DevOps). Артефакты — в `content/10-domain/research/`, `content/30-requirements/`, `content/00-project/adr/`, `content/40-architecture/`, `content/60-implementation/`, `content/70-operations/`.
@@ -39,6 +78,22 @@ model: opus
 
 ### Зависимости / Риски / GO-критерии
 ```
+
+### Soft-suggest opt-in subagents в decompose
+
+При декомпозиции эпика проверяй ключевые слова и предлагай opt-in роли:
+
+| Триггер в запросе | Suggest |
+|-------------------|---------|
+| "secrets", "SAST", "supply-chain", "vulnerability", "dependency audit" | DevSecOps в Dev-фазе |
+| "152-ФЗ", "ISO 27001", "GDPR", "compliance audit", "internal policy" | Compliance research-задача |
+| "customer-facing", "public docs", "external readers", "user-facing" | Tech Writer как secondary editor |
+| "deploy", "runbook", "monitoring", "rollback", "on-call" | DevOps |
+
+Формат предложения:
+> «Заметил триггер X — предлагаю включить роль Y в декомпозицию (это opt-in, можно skip). Подтверди?»
+
+Не активируй автоматически — soft-suggest, ждёт явного "да" от пользователя.
 
 ## Правила делегирования субагентам
 

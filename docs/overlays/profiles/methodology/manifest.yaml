@@ -1,0 +1,14 @@
+schema_version: 1
+name: methodology
+description: Методология / playbook / framework
+status: stub
+subagents:
+  pm: core
+  tech-writer: core
+  researcher: optional
+pipelines: {}
+content_scaffold: ./
+doc_root: ./
+operations: []
+compatible_stacks: []
+maintainer: project_template

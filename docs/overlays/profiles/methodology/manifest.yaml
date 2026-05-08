@@ -1,14 +1,41 @@
 schema_version: 1
 name: methodology
-description: Методология / playbook / framework
-status: stub
+description: Методология / playbook / framework для команд, создающих нормативные системы
+audience: Engineering leads, agile coaches, центры компетенций
+status: stable
+
 subagents:
   pm: core
   tech-writer: core
   researcher: optional
+  compliance: optional
+  ba: disabled
+  sa: disabled
+  dev: disabled
+  devops: disabled
+  qa: disabled
+  devsecops: disabled
+
 pipelines: {}
-content_scaffold: ./
-doc_root: ./
-operations: []
+
+content_scaffold: content-scaffold/
+doc_root: doc-root.yaml
+
+operations:
+  - op: add
+    source: content-scaffold/
+    target: content/
+    reason: "methodology scaffold (10-principles, 20-practices, 30-playbooks, 40-templates, 50-cases)"
+  - op: replace
+    source: doc-root.yaml
+    target: content/.doc-root.yaml
+    reason: "methodology properties (Тип контента, Уровень, Область применения, Статус)"
+
+agent_overrides:
+  tech-writer:
+    source: agent-overrides/tech-writer.md
+
+init_prompts: []
+
 compatible_stacks: []
 maintainer: project_template

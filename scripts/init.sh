@@ -4,6 +4,151 @@
 
 set -euo pipefail
 
+# ===== Helper functions =====
+
+print_profile_menu() {
+  # Собрать список профилей через python3 (YAML parse + sort)
+  local PROFILES_JSON
+  PROFILES_JSON=$(python3 -c "
+import yaml, json, os, glob
+profiles = []
+for mf in glob.glob('docs/overlays/profiles/*/manifest.yaml'):
+    try:
+        m = yaml.safe_load(open(mf))
+        profiles.append({
+            'name':        m.get('name', os.path.basename(os.path.dirname(mf))),
+            'description': m.get('description', ''),
+            'audience':    m.get('audience') or '',
+            'status':      m.get('status', 'stable'),
+        })
+    except Exception:
+        pass  # битый manifest — пропустить без crash
+# sort: project first, stable alphabetically, остальные в конце
+def sort_key(p):
+    if p['name'] == 'project': return (0, '')
+    if p['status'] == 'stable': return (1, p['name'])
+    return (2, p['name'])
+profiles.sort(key=sort_key)
+print(json.dumps(profiles))
+" 2>/dev/null || echo "[]")
+
+  if [[ -z "$PROFILES_JSON" ]] || [[ "$PROFILES_JSON" == "[]" ]]; then
+    # Fallback на legacy-вывод
+    echo "Доступные профили:"
+    for p in docs/overlays/profiles/*/; do
+      [[ ! -d "$p" ]] && continue
+      pname=$(basename "$p")
+      [[ "$pname" == ".gitkeep" ]] && continue
+      [[ -f "$p/manifest.yaml" ]] && echo "  - $pname"
+    done
+    return
+  fi
+
+  echo "Available profiles:"
+  local MAX_LEN
+  MAX_LEN=$(echo "$PROFILES_JSON" | python3 -c "
+import json, sys
+ps = json.load(sys.stdin)
+print(max(len(p['name']) for p in ps) if ps else 7)
+" 2>/dev/null || echo "7")
+
+  echo "$PROFILES_JSON" | python3 -c "
+import json, sys
+ps = json.load(sys.stdin)
+max_len = $MAX_LEN
+for p in ps:
+    line = '  {:<{w}} — {}'.format(p['name'], p['description'], w=max_len)
+    if p.get('audience'):
+        line += ' [для: {}]'.format(p['audience'])
+    print(line)
+" 2>/dev/null
+}
+
+print_profile_summary() {
+  local profile="$1"
+  local mf="docs/overlays/profiles/${profile}/manifest.yaml"
+
+  if [[ ! -f "$mf" ]]; then
+    echo "Warning: cannot read manifest for profile '${profile}'"
+    return 0
+  fi
+
+  python3 -c "
+import yaml, sys
+profile = '$profile'
+mf = 'docs/overlays/profiles/' + profile + '/manifest.yaml'
+try:
+    m = yaml.safe_load(open(mf))
+except Exception as e:
+    print('Warning: cannot read manifest for profile ' + repr(profile) + ': ' + str(e))
+    sys.exit(0)
+
+desc      = m.get('description', '')
+audience  = m.get('audience') or ''
+ops       = m.get('operations') or []
+overrides = m.get('agent_overrides') or {}
+subagents = m.get('subagents') or {}
+prompts   = m.get('init_prompts') or []
+
+op_add     = sum(1 for o in ops if o.get('op') == 'add')
+op_replace = sum(1 for o in ops if o.get('op') == 'replace')
+op_resolve = sum(1 for o in ops if o.get('op') == 'resolve_agents')
+op_total   = len(ops)
+
+override_names = list(overrides.keys())
+
+core_count     = sum(1 for v in subagents.values() if v == 'core')
+optional_count = sum(1 for v in subagents.values() if v == 'optional')
+disabled_count = sum(1 for v in subagents.values() if v == 'disabled')
+
+print('Profile: ' + profile + ' — ' + desc)
+print('  Description : ' + desc)
+if audience:
+    print('  Audience    : ' + audience)
+ops_detail = 'add: {}, replace: {}'.format(op_add, op_replace)
+if op_resolve:
+    ops_detail += ', resolve_agents: {}'.format(op_resolve)
+print('  Operations  : {} ({})'.format(op_total, ops_detail))
+if override_names:
+    print('  Overrides   : {} ({})'.format(len(override_names), ', '.join(override_names)))
+else:
+    print('  Overrides   : 0')
+print('  Subagents   : {} core, {} optional, {} disabled'.format(
+    core_count, optional_count, disabled_count))
+print('  Init prompts: {}'.format(len(prompts)))
+" 2>/dev/null || echo "Warning: cannot read manifest for profile '${profile}'"
+}
+
+confirm_apply() {
+  local profile="$1"
+
+  # Bypass: INIT_FORCE=1
+  if [[ "${INIT_FORCE:-0}" == "1" ]]; then
+    return 0
+  fi
+
+  # Bypass: non-interactive (no TTY on stdin)
+  if [[ ! -t 0 ]]; then
+    return 0
+  fi
+
+  # Интерактивный confirm
+  read -r -p "Apply profile '${profile}'? (Y/n): " CONFIRM_ANSWER
+  CONFIRM_ANSWER="${CONFIRM_ANSWER:-Y}"
+
+  case "$CONFIRM_ANSWER" in
+    n|N|no|NO)
+      echo "Init cancelled by user. Re-run when ready."
+      exit 0
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+# ===== End helper functions =====
+
 # T40: parse --profile flag BEFORE positional args
 PROFILE=""
 while [[ $# -gt 0 ]]; do
@@ -82,14 +227,9 @@ if [[ -z "$PROFILE" ]]; then
   elif [[ ! -t 0 ]]; then
     PROFILE="project"  # non-interactive default (e.g. echo | bash init.sh)
   else
-    echo "Доступные профили:"
-    for p in docs/overlays/profiles/*/; do
-      [[ ! -d "$p" ]] && continue
-      pname=$(basename "$p")
-      [[ "$pname" == ".gitkeep" ]] && continue
-      [[ -f "$p/manifest.yaml" ]] && echo "  - $pname"
-    done
-    read -r -p "Профиль (default: project): " PROFILE
+    print_profile_menu                                             # <-- NEW
+    echo ""
+    read -r -p "Enter profile name (default: project): " PROFILE  # <-- UPDATED prompt
     PROFILE="${PROFILE:-project}"
   fi
 fi
@@ -108,6 +248,8 @@ fi
 
 if [[ -n "$PROFILE" ]]; then
   echo "Profile: $PROFILE"
+  print_profile_summary "$PROFILE"  # <-- NEW
+  confirm_apply "$PROFILE"          # <-- NEW
 fi
 
 # 3.3. Защита от случайного push в репозиторий шаблона
@@ -146,6 +288,63 @@ done
 # 4.5 — T40: Применить профильный overlay (operations: add/replace/delete)
 if [[ -n "$PROFILE" ]]; then
   echo "Applying profile overlay '$PROFILE'..."
+
+  # T7 (W3-A1): Собрать ответы init_prompts из manifest + export как INIT_PROMPT_<id>
+  if command -v python3 >/dev/null 2>&1; then
+    PROMPTS_JSON=$(python3 -c "
+import yaml, json
+m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
+print(json.dumps(m.get('init_prompts') or []))
+" 2>/dev/null)
+
+    if [[ -n "$PROMPTS_JSON" ]] && [[ "$PROMPTS_JSON" != "[]" ]]; then
+      # Получить количество prompts
+      PROMPTS_COUNT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+
+      for i in $(seq 0 $((PROMPTS_COUNT - 1))); do
+        PROMPT_ID=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('id', ''))")
+        PROMPT_TEXT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('prompt', ''))")
+        PROMPT_TYPE=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('type', 'string'))")
+        PROMPT_DEFAULT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('default', ''))")
+        PROMPT_CHOICES=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; c=p.get('choices') or []; print('|'.join(c))")
+
+        if [[ -z "$PROMPT_ID" ]]; then continue; fi
+
+        # T6 advisory I1: validate prompt id is valid bash identifier
+        if ! [[ "$PROMPT_ID" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+          echo "ERROR: init_prompts id '$PROMPT_ID' содержит недопустимые символы (используй [A-Za-z0-9_] only)" >&2
+          exit 1
+        fi
+
+        # Если non-interactive (нет TTY) или INIT_SKIP_PROMPTS — использовать default
+        if [[ ! -t 0 ]] || [[ "${INIT_SKIP_PROMPTS:-0}" == "1" ]]; then
+          ANSWER="$PROMPT_DEFAULT"
+        else
+          # Показать prompt + choices (если enum)
+          if [[ "$PROMPT_TYPE" == "enum" ]] && [[ -n "$PROMPT_CHOICES" ]]; then
+            echo "$PROMPT_TEXT (one of: $(echo "$PROMPT_CHOICES" | tr '|' ' '), default: $PROMPT_DEFAULT)"
+          else
+            echo "$PROMPT_TEXT (default: $PROMPT_DEFAULT)"
+          fi
+          read -r -p "  → " ANSWER
+          ANSWER="${ANSWER:-$PROMPT_DEFAULT}"
+        fi
+
+        # Validate enum choice
+        if [[ "$PROMPT_TYPE" == "enum" ]] && [[ -n "$PROMPT_CHOICES" ]]; then
+          if ! echo "|$PROMPT_CHOICES|" | grep -qF "|$ANSWER|"; then
+            echo "ERROR: '$ANSWER' не в choices [$PROMPT_CHOICES] для prompt '$PROMPT_ID'" >&2
+            exit 1
+          fi
+        fi
+
+        # Export
+        export "INIT_PROMPT_$PROMPT_ID=$ANSWER"
+        echo "  ✓ INIT_PROMPT_$PROMPT_ID=$ANSWER"
+      done
+    fi
+  fi
+
   # --force нужен потому что Wave 1 scaffold (30-requirements/, 40-architecture/...)
   # содержит реальный baseline-контент, который kb-team / другие профили удаляют.
   # На init это безопасно: пользователь только что клонировал шаблон.

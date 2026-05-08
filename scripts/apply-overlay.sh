@@ -179,8 +179,14 @@ op_add() {
 
   mkdir -p "$target"
   if [[ -d "$source_path" ]]; then
-    cp -r "$source_path"/* "$target"/ 2>/dev/null || true
-    cp -r "$source_path"/.[!.]* "$target"/ 2>/dev/null || true  # hidden files
+    # A5: nullglob+dotglob — без явного отдельного hidden-glob, без шума при отсутствии файлов
+    (
+      shopt -s nullglob dotglob
+      files=("$source_path"/*)
+      if (( ${#files[@]} > 0 )); then
+        cp -r "${files[@]}" "$target"/
+      fi
+    )
   else
     cp "$source_path" "$target"
   fi
@@ -239,8 +245,36 @@ is_safe_to_delete() {
   return 1
 }
 
+op_resolve_agents() {
+  # W4a-T12: invoke _resolve_agents.py to merge base prompts + per-profile overrides
+  # into resolved prompts in target dir. Op emitted by _apply_profile.py when manifest
+  # contains agent_overrides:.
+  # Args (consistent с другими op_* — реально не используются helper'ом, у которого
+  # своя логика resolve через manifest):
+  #   $1 — profile_dir (passed для symmetry; helper читает manifest сам)
+  #   $2 — source (relative path "agent-overrides/" — informational)
+  #   $3 — target (target dir для resolved prompts; e.g. ".claude/plugins/project/agents/")
+  #   $4 — reason (human-readable, для логов)
+  local profile_dir="$1" source="$2" target="$3" reason="$4"
+
+  echo "[RESOLVE_AGENTS] $source → $target  ($reason)"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "  [DRY-RUN] would invoke _resolve_agents.py"
+    return 0
+  fi
+
+  python3 scripts/_resolve_agents.py \
+    "$profile_dir" \
+    --base-dir ".claude/plugins/project/agents/" \
+    --target-dir "$target" \
+    || { echo "ERROR: _resolve_agents.py failed для $profile_dir" >&2; exit 1; }
+
+  echo "  ✓ resolved"
+}
+
 op_delete() {
-  local target="$1" reason="$2"
+  local target="$1" reason="$2" verdict="${3:-}"
 
   echo "[DELETE] $target  ($reason)"
 
@@ -259,7 +293,16 @@ op_delete() {
     return 0
   fi
 
-  if is_safe_to_delete "$target"; then
+  # A2: verdict приходит из helper'а; fallback на bash is_safe_to_delete если verdict не передан
+  if [[ -z "$verdict" ]]; then
+    if is_safe_to_delete "$target"; then
+      verdict="safe"
+    else
+      verdict="refuse"
+    fi
+  fi
+
+  if [[ "$verdict" == "safe" ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
       echo "  [DRY-RUN] safe to delete"
       return 0
@@ -303,7 +346,18 @@ apply_profile_overlay() {
     }
   fi
 
-  # Прочитать status
+  # A2: один вызов helper'а — JSON plan на stdout
+  # W4a-T2: array вместо unquoted string (SC2086 + safety при пробелах).
+  # Pattern "${arr[@]+"${arr[@]}"}" безопасен для пустого массива под set -u.
+  local init_args=()
+  [[ "$INIT_MODE" -eq 1 ]] && init_args+=("--init")
+  local plan_json
+  if ! plan_json=$(python3 scripts/_apply_profile.py "$profile_dir" ${init_args[@]+"${init_args[@]}"}); then
+    echo "ERROR: _apply_profile.py упал на $name" >&2
+    exit 1
+  fi
+
+  # Прочитать status (отдельный вызов — helper не эмиттит status, чтобы plan был чисто ops)
   local status
   status=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m.get('status', 'unknown'))")
   echo "Status: $status"
@@ -312,9 +366,32 @@ apply_profile_overlay() {
     echo "⚠ stub-профиль: scaffold не определён, профиль готов к расширению в Wave 3+"
   fi
 
-  # Прочитать operations
+  # Convert JSON plan to delimited rows для bash-friendly iteration.
+  # Используем ASCII Unit Separator (\x1f, non-whitespace) — bash IFS
+  # с whitespace-разделителями (\t, space) схлопывает consecutive delimiters,
+  # что ломает поля с empty source.
+  local plan_tsv
+  plan_tsv=$(echo "$plan_json" | python3 -c '
+import json, sys
+plan = json.load(sys.stdin)
+US = "\x1f"
+for op in plan["ops"]:
+    print(US.join([
+        op.get("op", ""),
+        op.get("source", ""),
+        op.get("target", ""),
+        op.get("reason", ""),
+        op.get("verdict", ""),
+    ]))
+')
+
+  # W4b-T11: ops_count из TSV вместо отдельного python3 invocation
   local ops_count
-  ops_count=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(len(m.get('operations') or []))")
+  if [[ -z "$plan_tsv" ]]; then
+    ops_count=0
+  else
+    ops_count=$(printf '%s\n' "$plan_tsv" | grep -c -v '^$' || true)
+  fi
 
   if [[ "$ops_count" -eq 0 ]]; then
     echo "No operations defined — done."
@@ -323,20 +400,16 @@ apply_profile_overlay() {
 
   echo "Operations to execute: $ops_count"
 
-  for i in $(seq 0 $((ops_count - 1))); do
-    local op source target reason
-    op=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('op', ''))")
-    source=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('source', ''))")
-    target=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('target', ''))")
-    reason=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m['operations'][$i].get('reason', ''))")
-
+  while IFS=$'\x1f' read -r op source target reason verdict; do
+    [[ -z "$op" ]] && continue
     case "$op" in
-      add)     op_add "$profile_dir" "$source" "$target" "$reason" ;;
-      replace) op_replace "$profile_dir" "$source" "$target" "$reason" ;;
-      delete)  op_delete "$target" "$reason" ;;
-      *)       echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
+      add)            op_add "$profile_dir" "$source" "$target" "$reason" ;;
+      replace)        op_replace "$profile_dir" "$source" "$target" "$reason" ;;
+      delete)         op_delete "$target" "$reason" "$verdict" ;;
+      resolve_agents) op_resolve_agents "$profile_dir" "$source" "$target" "$reason" ;;  # W4a-T12
+      *)              echo "ERROR: unknown op '$op'" >&2; exit 1 ;;
     esac
-  done
+  done <<< "$plan_tsv"
 }
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

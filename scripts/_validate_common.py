@@ -51,8 +51,10 @@ def parse_yaml_file(path: Path) -> dict | None:
         return {}
     try:
         text = path.read_text(encoding="utf-8")
-        # Подменяем плейсхолдеры на безопасные строки (для шаблонов до init.sh)
-        substituted = PLACEHOLDER_RE.sub(lambda m: f'"PLACEHOLDER_{m.group(0)[2:-2]}"', text)
+        # Подменяем плейсхолдеры на безопасные строки (для шаблонов до init.sh).
+        # Используем plain-строку без кавычек: кавычки внутри значения с окружающим текстом
+        # (e.g. title: "PLACEHOLDER" — rest) ломают парсинг YAML.
+        substituted = PLACEHOLDER_RE.sub(lambda m: f"PLACEHOLDER_{m.group(0)[2:-2]}", text)
         return yaml.safe_load(substituted) or {}
     except yaml.YAMLError:
         return None

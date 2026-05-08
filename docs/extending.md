@@ -44,7 +44,8 @@
    ```yaml
    schema_version: 1
    name: <name>
-   description: <human-readable>
+   description: <human-readable>  # покажется в `init.sh` меню — пиши понятно для конечного пользователя
+   audience: <human-readable>     # опц.; покажется как "[для: <audience>]" в меню
    status: stub  # или stable когда наполнишь scaffold
    subagents:
      pm: core
@@ -55,6 +56,8 @@
    operations: []
    compatible_stacks: []  # или ['*'] для совместимости с любым stack
    ```
+
+   **W4c-B: при interactive `bash scripts/init.sh` profile menu показывает `<name> — <description> [для: <audience>]`.** Описание должно быть достаточно специфичным, чтобы пользователь мог отличить профили друг от друга в одной строке.
 
 3. (Если `status: stable`) — наполнить `content-scaffold/` (минимум `_index.md` + поддиректории) + создать `doc-root.yaml` (шаблон `.doc-root.yaml` для профиля).
 

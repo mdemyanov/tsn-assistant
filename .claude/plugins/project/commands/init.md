@@ -82,7 +82,8 @@ ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
    Скрипт:
    - читает `docs/overlays/profiles/$PROFILE/manifest.yaml`
    - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`
-   - вызовет `apply-overlay.sh --profile --init <profile>` для применения операций (add/replace/delete)
+   - **спрашивает значения для `init_prompts:` манифеста** (если есть). Например, для `project` спрашивает «Проект под compliance-надзором?» — ответ применяется как mutation к manifest in-memory (например `subagents.compliance: optional → core` для `152-fz`). На non-interactive (без TTY) или с `INIT_SKIP_PROMPTS=1` используется `default`.
+   - вызовет `apply-overlay.sh --profile --init <profile>` для применения операций (add/replace/delete) — helper читает `INIT_PROMPT_<id>` env vars и применяет on_value мутации перед эмитом ops plan
    - опц. предложит применить совместимые stack-overlay'и (`compatible_stacks` из manifest'а)
    - wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`
    - создаст ветку `private`

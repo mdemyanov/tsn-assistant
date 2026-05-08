@@ -1,7 +1,9 @@
 schema_version: 1
 name: product
-description: Разработка продукта/модуля (vision → spec → ADR → реализация → release)
-status: stub
+description: Разработка продукта/модуля — internal docs от vision до release (team-facing)
+audience: Продуктовые менеджеры, системные аналитики, разработчики, QA
+status: stable
+
 subagents:
   pm: core
   ba: core
@@ -13,13 +15,33 @@ subagents:
   devops: optional
   devsecops: optional
   compliance: optional
+
 pipelines:
   project-planning: optional
   ba-acceptance: optional
   critical-path: disabled
   scrum-agile: disabled
-content_scaffold: ./
-doc_root: ./
-operations: []
-compatible_stacks: ["*"]
+
+content_scaffold: content-scaffold/
+doc_root: doc-root.yaml
+
+operations:
+  - op: add
+    source: content-scaffold/
+    target: content/
+    reason: "product scaffold (10-vision, 20-discovery, 30-specs, 40-architecture, 50-releases)"
+  - op: replace
+    source: doc-root.yaml
+    target: content/.doc-root.yaml
+    reason: "product properties (Тип контента, Статус, Версия, Аудитория)"
+
+agent_overrides:
+  tech-writer:
+    source: agent-overrides/tech-writer.md
+  sa:
+    source: agent-overrides/sa.md
+
+init_prompts: []
+
+compatible_stacks: []
 maintainer: project_template

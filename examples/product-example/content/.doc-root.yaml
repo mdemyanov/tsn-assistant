@@ -1,0 +1,43 @@
+title: "Example Product — Product Docs"
+description: Пример продуктовой документации
+syntax: XML
+language: ru
+editors:
+  - example@product.com
+
+properties:
+  - name: Тип контента
+    type: Enum
+    style: blue
+    icon: file-text
+    values:
+      - Vision
+      - Discovery
+      - Spec
+      - ADR
+      - Release Notes
+      - Roadmap
+    required: true
+
+  - name: Статус
+    type: Enum
+    style: green
+    icon: check
+    values: [Draft, Review, Approved, Shipped, Deprecated]
+    required: true
+
+  - name: Версия
+    type: String
+    style: purple
+    icon: tag
+    placeholder: "v1.2.3"
+    required: false
+
+  - name: Аудитория
+    type: Enum
+    style: yellow
+    icon: users
+    values: [Internal, External]
+    required: false
+
+filterProperties: [Тип контента, Статус, Версия, Аудитория]

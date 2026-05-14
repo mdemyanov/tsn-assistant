@@ -2,6 +2,12 @@
 # Unit tests for scripts/_resolve_agents.py merge_delta function.
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMPDIR="$(mktemp -d)"
 trap "rm -rf $TMPDIR" EXIT
@@ -53,7 +59,7 @@ description: Customer-facing writer
 Customer-facing.
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/tech-writer.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/tech-writer.md")
 assert_contains "$RESULT" "description: Customer-facing writer" "T1: description should be replaced"
 assert_contains "$RESULT" "model: opus" "T1: model should inherit from base"
 assert_contains "$RESULT" "name: tech-writer" "T1: name should inherit from base"
@@ -83,7 +89,7 @@ extends: r
 Specific role.
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "Specific role." "T2: override section should replace"
 assert_contains "$RESULT" "Generic constraints." "T2: untouched section should inherit"
 echo "  ✓"
@@ -98,7 +104,7 @@ description: minimal
 ---
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "Generic role." "T3: base section inherited when override empty"
 assert_contains "$RESULT" "Generic constraints." "T3: all base sections inherited"
 echo "  ✓"
@@ -114,7 +120,7 @@ extends: r
 Customer-facing only.
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "Generic role." "T4: base sections inherited"
 assert_contains "$RESULT" "Customer-facing only." "T4: new section appended"
 echo "  ✓"
@@ -128,7 +134,7 @@ description: Specialized
 ---
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "Generic role." "T5: section inherited when override has no body"
 assert_contains "$RESULT" "description: Specialized" "T5: frontmatter merged"
 echo "  ✓"
@@ -155,7 +161,7 @@ extends: r
 - Pin product version in every doc.
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "Be concise." "T6: {{super}} substituted with base content"
 assert_contains "$RESULT" "Pin product version" "T6: extending content kept"
 echo "  ✓"
@@ -172,7 +178,7 @@ extends: r
 - something
 EOF
 
-if python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
+if uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
     echo "FAIL: T7 should have errored on {{super}} without base section"
     exit 1
 fi
@@ -189,7 +195,7 @@ description: bad override
 Whatever.
 EOF
 
-if python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
+if uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
     echo "FAIL: T8 should have errored on missing extends"
     exit 1
 fi
@@ -203,7 +209,7 @@ extends: someone-else
 ---
 EOF
 
-if python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
+if uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>/dev/null; then
     echo "FAIL: T9 should have errored on extends mismatch (extends 'someone-else' but file is 'r.md')"
     exit 1
 fi
@@ -232,7 +238,7 @@ tools:
 ---
 EOF
 
-RESULT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
+RESULT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md")
 assert_contains "$RESULT" "- Read" "T10: list contains override item"
 if grep -q "Write" <<< "$RESULT"; then
     echo "FAIL: T10 list should be replaced, not unioned (Write should be absent)"
@@ -276,7 +282,7 @@ name: inactive
 Inactive role.
 EOF
 
-python3 "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$BASE" --target-dir "$TARGET" \
+uv run "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$BASE" --target-dir "$TARGET" \
     || { echo "FAIL: T11 main flow should succeed"; exit 1; }
 
 # Disabled role NOT written
@@ -309,7 +315,7 @@ description: [unclosed bracket
 Whatever.
 EOF
 
-ERR_OUTPUT=$(python3 "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>&1 1>/dev/null) || true
+ERR_OUTPUT=$(uv run "$ROOT/scripts/_resolve_agents.py" --merge-only "$TMPDIR/base.md" "$TMPDIR/r.md" 2>&1 1>/dev/null) || true
 assert_contains "$ERR_OUTPUT" "malformed YAML" "T12: should report malformed YAML cleanly"
 # Should NOT contain Python traceback frames
 if grep -q "Traceback" <<< "$ERR_OUTPUT"; then
@@ -338,7 +344,7 @@ name: active
 Test.
 EOF
 
-ERR_OUTPUT=$(python3 "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$TMPDIR/base-agents-13" --target-dir "$TMPDIR/target-13" 2>&1 1>/dev/null) || true
+ERR_OUTPUT=$(uv run "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$TMPDIR/base-agents-13" --target-dir "$TMPDIR/target-13" 2>&1 1>/dev/null) || true
 assert_contains "$ERR_OUTPUT" "malformed YAML" "T13: manifest malformed → clean error"
 if grep -q "Traceback" <<< "$ERR_OUTPUT"; then
     echo "FAIL: T13 should not produce Python traceback"
@@ -369,7 +375,7 @@ name: active
 Test.
 EOF
 
-ERR_OUTPUT=$(python3 "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$TMPDIR/base-agents-14" --target-dir "$TMPDIR/target-14" 2>&1 1>/dev/null) || true
+ERR_OUTPUT=$(uv run "$ROOT/scripts/_resolve_agents.py" "$PROFILE" --base-dir "$TMPDIR/base-agents-14" --target-dir "$TMPDIR/target-14" 2>&1 1>/dev/null) || true
 assert_contains "$ERR_OUTPUT" "missing 'source'" "T14: missing source field → clean error"
 if grep -q "Traceback" <<< "$ERR_OUTPUT"; then
     echo "FAIL: T14 should not produce Python traceback"
@@ -413,7 +419,7 @@ name: qa-runner
 QA Runner role.
 EOF
 
-python3 "$ROOT/scripts/_resolve_agents.py" "$PROFILE_QA" --base-dir "$BASE_QA" --target-dir "$TARGET_QA" \
+uv run "$ROOT/scripts/_resolve_agents.py" "$PROFILE_QA" --base-dir "$BASE_QA" --target-dir "$TARGET_QA" \
     || { echo "FAIL: T-RA-QA-SPLIT main flow should succeed"; exit 1; }
 
 # Both qa-author-agent.md and qa-runner-agent.md must be in target

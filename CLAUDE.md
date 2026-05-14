@@ -82,7 +82,7 @@
 - `bash scripts/init.sh --profile <name> ...` — non-interactive (CLI args покрывают все prompts)
 - `INIT_FORCE=1 bash scripts/init.sh ...` — пропустить confirm prompt (для автоматизации/CI)
 - `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций
-- `python3 scripts/validate-profile.py` — валидация manifest'ов
+- `uv run scripts/validate-profile.py` — валидация manifest'ов
 
 ### Файлы
 
@@ -117,7 +117,7 @@ PM (main, Opus) + 9 subagent'ов (Sonnet): researcher, ba, sa, dev, devops, qa 
   Плоская нотация (`- Тип контента: ADR`) — устарела, рендерится непредсказуемо.
 - **Cross-каталожные ссылки** (между разными `.doc-root.yaml`) — только inline code (`` `other-catalog/path.md` ``), не markdown link.
 - **Эталон production-каталога:** `/Users/mdemyanov/Devel/naumen-ecosystem/business-requirements/`.
-- **Валидация:** `python3 scripts/validate-content.py` — обязательно зелёный перед merge `private→public`.
+- **Валидация:** `uv run scripts/validate-content.py` — обязательно зелёный перед merge `private→public`.
 
 ## Поток работы
 

@@ -264,7 +264,7 @@ op_resolve_agents() {
     return 0
   fi
 
-  python3 scripts/_resolve_agents.py \
+  uv run scripts/_resolve_agents.py \
     "$profile_dir" \
     --base-dir ".claude/plugins/project/agents/" \
     --target-dir "$target" \
@@ -339,9 +339,9 @@ apply_profile_overlay() {
 
   # validate-profile перед применением
   if [[ "${INIT_MODE:-0}" -ne 1 ]]; then
-    python3 scripts/validate-profile.py "$profile_dir" >/dev/null 2>&1 || {
+    uv run scripts/validate-profile.py "$profile_dir" >/dev/null 2>&1 || {
       echo "ERROR: validate-profile.py упал на $name" >&2
-      python3 scripts/validate-profile.py "$profile_dir" >&2
+      uv run scripts/validate-profile.py "$profile_dir" >&2
       exit 1
     }
   fi
@@ -352,14 +352,14 @@ apply_profile_overlay() {
   local init_args=()
   [[ "$INIT_MODE" -eq 1 ]] && init_args+=("--init")
   local plan_json
-  if ! plan_json=$(python3 scripts/_apply_profile.py "$profile_dir" ${init_args[@]+"${init_args[@]}"}); then
+  if ! plan_json=$(uv run scripts/_apply_profile.py "$profile_dir" ${init_args[@]+"${init_args[@]}"}); then
     echo "ERROR: _apply_profile.py упал на $name" >&2
     exit 1
   fi
 
   # Прочитать status (отдельный вызов — helper не эмиттит status, чтобы plan был чисто ops)
   local status
-  status=$(python3 -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m.get('status', 'unknown'))")
+  status=$(uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "import yaml; m=yaml.safe_load(open('$profile_dir/manifest.yaml')); print(m.get('status', 'unknown'))" 2>/dev/null || echo "unknown")
   echo "Status: $status"
 
   if [[ "$status" == "stub" ]]; then
@@ -371,7 +371,7 @@ apply_profile_overlay() {
   # с whitespace-разделителями (\t, space) схлопывает consecutive delimiters,
   # что ломает поля с empty source.
   local plan_tsv
-  plan_tsv=$(echo "$plan_json" | python3 -c '
+  plan_tsv=$(echo "$plan_json" | uv run --no-project python -c '
 import json, sys
 plan = json.load(sys.stdin)
 US = "\x1f"

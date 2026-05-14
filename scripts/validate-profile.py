@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pyyaml>=6.0,<7.0",
+# ]
+# ///
 """validate-profile.py — валидатор manifest'ов профилей.
 
 Проверяет docs/overlays/profiles/*/manifest.yaml на соответствие schema (M1-M10).

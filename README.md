@@ -37,6 +37,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
    - после выбора профиля — **summary block** (operations / overrides / subagents) и **confirm gate** перед применением;
    - заполнит плейсхолдеры (имя проекта, код каталога Gramax, описание, email редактора);
    - спросит URL нового origin и **отвяжет репо от шаблона** (`rm -rf .git && git init`);
+   - зарегистрирует MCP-сервер `open-websearch` (user-scope) — поисковик по умолчанию для researcher-agent; идемпотентен, bypass через `INIT_SKIP_MCP=1`;
    - проведёт интервью по теме проекта (стек, команды сборки, red-lines), оставит `<!-- TODO(/init): … -->` на пропусках.
 2. (Опционально для SMP-проекта) `bash scripts/apply-overlay.sh naumen-smp`.
 3. `/pm decompose <твоя первая фича>` — поехали.
@@ -65,6 +66,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 - `bash scripts/init.sh` — interactive: меню профилей с описаниями, summary, confirm
 - `bash scripts/init.sh --profile <name> "Name" "CODE" "desc" "email" "git-url"` — non-interactive (CLI)
 - `INIT_FORCE=1 bash scripts/init.sh --profile <name> ...` — пропустить confirm prompt (CI)
+- `INIT_SKIP_MCP=1 bash scripts/init.sh ...` — не регистрировать MCP-сервер `open-websearch` (CI/offline)
 - `uv run scripts/validate-profile.py` — валидация manifest'ов профилей
 - `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций профиля
 - `bash scripts/check.sh --fast` — pre-commit gate (validate-content + validate-profile, ~3 сек)

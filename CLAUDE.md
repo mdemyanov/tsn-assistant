@@ -38,6 +38,10 @@
 - **superpowers@claude-plugins-official** — `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, и др.
 - **project@local** — агенты PM/BA/SA/Dev/DevOps/Researcher + локальные скиллы (`infoinstyle`, `correspondence-2`)
 
+### MCP-серверы (регистрируются на `/init`, user-scope)
+
+- **`open-websearch`** — поисковик по умолчанию для researcher-agent (DuckDuckGo, разрешены DDG/Bing/Exa). Инструменты: `mcp__open-websearch__search`, `mcp__open-websearch__fetchWebContent`, `mcp__open-websearch__fetchGithubReadme` и др. Встроенные `WebSearch`/`WebFetch` — fallback, если MCP-сервер недоступен. Установка вручную: `claude mcp add -s user -t stdio open-websearch --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa -- npx open-websearch@latest`.
+
 ## Структура плагинной системы
 
 Шаблон поставляет три файла, которые делают `project@local` работающим сразу после клона:

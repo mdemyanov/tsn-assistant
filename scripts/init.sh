@@ -390,6 +390,34 @@ if [[ -f .env.example ]] && [[ ! -f .env ]]; then
   echo "✓ created .env (заполни секреты)"
 fi
 
+# 6.5 Установить MCP-сервер open-websearch (поиск по умолчанию для researcher-agent).
+# Регистрируется в user-scope (~/.claude.json) — один раз на машину, общий для всех проектов.
+# Bypass: INIT_SKIP_MCP=1 или отсутствие CLI `claude` в PATH (CI/тесты).
+if [[ "${INIT_SKIP_MCP:-0}" == "1" ]]; then
+  echo "↷ skipping MCP install (INIT_SKIP_MCP=1)"
+elif ! command -v claude >/dev/null 2>&1; then
+  echo "WARNING: CLI 'claude' не найден в PATH — пропускаю установку open-websearch."
+  echo "  Установи Claude Code и выполни вручную:"
+  echo "    claude mcp add -s user -t stdio open-websearch \\"
+  echo "      --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo \\"
+  echo "      ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa \\"
+  echo "      -- npx open-websearch@latest"
+elif claude mcp list 2>/dev/null | grep -qE '^open-websearch:'; then
+  echo "✓ MCP open-websearch уже зарегистрирован (skip)"
+else
+  if claude mcp add -s user -t stdio open-websearch \
+      --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa \
+      -- npx open-websearch@latest >/dev/null 2>&1; then
+    echo "✓ установлен MCP open-websearch (user-scope, поисковик по умолчанию для researcher)"
+  else
+    echo "WARNING: не удалось зарегистрировать open-websearch — researcher останется на WebFetch/WebSearch."
+    echo "  Повтори вручную: claude mcp add -s user -t stdio open-websearch \\"
+    echo "    --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo \\"
+    echo "    ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa \\"
+    echo "    -- npx open-websearch@latest"
+  fi
+fi
+
 # 7. Подсказка
 echo ""
 echo "Готово (фаза 1). Следующие шаги:"

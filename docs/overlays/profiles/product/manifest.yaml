@@ -43,5 +43,19 @@ agent_overrides:
 
 init_prompts: []
 
+drift_pairs:
+  - upstream: content/10-vision/
+    downstream: content/30-specs/
+    note: "Видение → спецификации"
+  - upstream: content/30-specs/
+    downstream: content/40-architecture/
+    note: "Спеки → архитектурные решения"
+  - upstream: content/40-architecture/
+    downstream: src/
+    note: "Архитектура → реализация"
+  - upstream: content/30-specs/
+    downstream: content/50-releases/
+    note: "Спеки → release notes"
+
 compatible_stacks: []
 maintainer: project_template

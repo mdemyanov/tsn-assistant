@@ -1,3 +1,4 @@
+profile: kb-team
 title: {{PROJECT_NAME}} — KB команды
 description: {{PROJECT_DESCRIPTION}}
 syntax: XML

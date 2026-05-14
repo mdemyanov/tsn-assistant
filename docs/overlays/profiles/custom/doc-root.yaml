@@ -1,3 +1,4 @@
+profile: custom
 title: "{{PROJECT_NAME}}"
 properties:
   - name: Тип контента

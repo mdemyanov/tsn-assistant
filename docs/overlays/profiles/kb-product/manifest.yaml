@@ -37,5 +37,16 @@ agent_overrides:
 
 init_prompts: []
 
+drift_pairs:
+  - upstream: content/reference/
+    downstream: content/guides/
+    note: "Reference → guides"
+  - upstream: content/guides/
+    downstream: content/troubleshooting/
+    note: "Guides → troubleshooting"
+  - upstream: content/reference/
+    downstream: content/getting-started/
+    note: "Reference → getting started"
+
 compatible_stacks: []
 maintainer: project_template

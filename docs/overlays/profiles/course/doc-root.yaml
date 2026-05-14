@@ -1,3 +1,4 @@
+profile: course
 title: "{{PROJECT_NAME}} — Курс"
 description: "{{PROJECT_DESCRIPTION}}"
 syntax: XML

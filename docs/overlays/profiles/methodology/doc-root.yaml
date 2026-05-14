@@ -1,3 +1,4 @@
+profile: methodology
 title: "{{PROJECT_NAME}} — Методология"
 description: {{PROJECT_DESCRIPTION}}
 syntax: XML

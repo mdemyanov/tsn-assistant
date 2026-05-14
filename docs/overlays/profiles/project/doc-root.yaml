@@ -1,3 +1,4 @@
+profile: project
 title: {{PROJECT_NAME}} — База знаний
 description: {{PROJECT_DESCRIPTION}}
 syntax: XML

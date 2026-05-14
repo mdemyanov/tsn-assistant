@@ -41,5 +41,19 @@ operations:
 
 init_prompts: []
 
+drift_pairs:
+  - upstream: content/40-roles/
+    downstream: content/30-runbooks/
+    note: "Роли → runbook'и"
+  - upstream: content/30-runbooks/
+    downstream: content/20-onboarding/
+    note: "Runbook'и → onboarding"
+  - upstream: content/10-domain/
+    downstream: content/40-roles/
+    note: "Доменные знания → определения ролей"
+  - upstream: content/50-incidents/
+    downstream: content/30-runbooks/
+    note: "Инциденты → обновление runbook'ов"
+
 compatible_stacks: []
 maintainer: project_template

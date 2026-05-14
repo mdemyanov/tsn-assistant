@@ -46,6 +46,33 @@ FAQ-стиль guide частых проблем и решений.
 
 **Решение:** Создать новый repo (на GitHub/GitLab) и указать его URL.
 
+### `init.sh` пишет `WARNING: CLI 'claude' не найден … пропускаю установку open-websearch`
+
+**Причина:** На машине нет CLI `claude` (Claude Code не установлен или не в PATH). init.sh не валит init и печатает ручную команду.
+
+**Решение:**
+1. Установи Claude Code (см. <https://docs.claude.com/claude-code>), убедись что `command -v claude` выводит путь.
+2. Выполни вручную: `claude mcp add -s user -t stdio open-websearch --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa -- npx open-websearch@latest`.
+3. Проверь: `claude mcp list | grep open-websearch` — должен быть `✓ Connected`.
+
+### `init.sh` пишет `WARNING: не удалось зарегистрировать open-websearch`
+
+**Причина:** `claude mcp add` упал (часто — конфликт scope/имени, повреждённый `~/.claude.json`, или Node.js/npx не на PATH для подъёма `npx open-websearch@latest`).
+
+**Решение:**
+1. Проверь имеющиеся сервера: `claude mcp list`. Если `open-websearch` уже есть под другим scope (project / local) — выбери источник истины и убери лишний (`claude mcp remove -s <scope> open-websearch`).
+2. Проверь `node --version` и `npx --version` — npx должен быть доступен (open-websearch стартует через `npx open-websearch@latest`).
+3. Запусти ручную команду из предыдущего FAQ, посмотри полный stderr.
+
+### Researcher-agent не использует open-websearch
+
+**Причина:** Сервер не зарегистрирован в текущей сессии Claude Code (добавлен после старта) или researcher-agent (subagent) пользуется устаревшим override'ом.
+
+**Решение:**
+1. Перезапусти Claude Code — MCP-инструменты подключаются на старте сессии.
+2. Убедись, что в `.claude/plugins/project/agents/researcher-agent.md` строка про «Поиск по веб-источникам» ссылается на `mcp__open-websearch__search` (см. шаблонный baseline).
+3. Если в проекте есть per-profile override (`docs/overlays/profiles/<name>/agent-overrides/researcher.md`) — приведи его инструкции в соответствие с baseline.
+
 ## validate-profile.py
 
 ### `validate-profile.py` exit 1 «manifest.yaml not found»

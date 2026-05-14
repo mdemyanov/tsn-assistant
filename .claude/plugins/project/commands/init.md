@@ -89,6 +89,7 @@ ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
    - создаст ветку `private`
    - опционально `git remote add origin <url>`
    - скопирует `.env.example` → `.env`
+   - **зарегистрирует MCP-сервер `open-websearch`** (user-scope, `claude mcp add -s user`) — поисковик по умолчанию для researcher-agent (DuckDuckGo, разрешены DDG/Bing/Exa). Идемпотентен (skip если уже зарегистрирован); если CLI `claude` отсутствует — печатает ручную команду и не валит init. Bypass: `INIT_SKIP_MCP=1`.
 
 3. **Верифицируй:**
    - `grep -RE '{{(PROJECT_(NAME|CODE|DESCRIPTION)|EDITOR_EMAIL)}}' CLAUDE.md AGENTS.md README.md content/.doc-root.yaml` — пусто.
@@ -99,6 +100,7 @@ ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
    - `python3 scripts/validate-profile.py` — exit 0 (warnings допустимы; M5 errors про pipelines резолвятся после T39)
    - `[ -f docs/overlays/profiles/$PROFILE/manifest.yaml ]` — true
    - Профиль-специфичный scaffold применён (для `kb-team` это `content/30-runbooks/`; для `project` — `content/00-project/plans/`)
+   - `claude mcp list 2>/dev/null | grep -q '^open-websearch:'` — true (или предупреждение init.sh про отсутствие CLI `claude` / `INIT_SKIP_MCP=1`)
 
 ### Фаза 2. Интервью по 6 темам
 

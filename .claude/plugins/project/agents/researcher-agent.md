@@ -33,7 +33,7 @@ Researcher **собирает и структурирует контекст** �
 
 | Ситуация | Скилл |
 |----------|-------|
-| Поиск по веб-источникам | `WebSearch`, `WebFetch` (или MCP-аналоги) |
+| Поиск по веб-источникам | `mcp__open-websearch__search` (по умолчанию, через DuckDuckGo/Bing), `mcp__open-websearch__fetchWebContent` — для подгрузки содержимого страницы. Встроенные `WebSearch` / `WebFetch` — только fallback, если MCP-сервер недоступен. |
 | Чтение файлов проекта / соседних репо | `Read`, `Grep`, `Glob` |
 | Многошаговое исследование (5+ источников) | `superpowers:brainstorming` для структурирования |
 | Оформление выжимки в Gramax | `gramax:writer` |

@@ -657,13 +657,20 @@ cd "$TMP_F4"
 git init -q -b main && git add -A && git -c user.email=t@x -c user.name=t commit -q -m baseline
 
 # T-W3-F4-fast: --fast exit 0
+# NOTE: on epic branch, content/ has SA/BA artifacts with invalid properties →
+# validate-content.py exits 1 → check.sh --fast exits 1.
+# Use set +e to avoid test-template.sh aborting here.
+set +e
 bash scripts/check.sh --fast >/dev/null 2>&1
 RC=$?
+set -e
 assert "T-W3-F4-fast: --fast exit 0" "[ \"$RC\" = '0' ]"
 
 # T-W3-F4-help: --help exit 0
+set +e
 bash scripts/check.sh --help >/dev/null 2>&1
 RC=$?
+set -e
 assert "T-W3-F4-help: --help exit 0" "[ \"$RC\" = '0' ]"
 
 # T-W3-F4-invalid: --invalid exit 2
@@ -748,9 +755,12 @@ set +e
 # Use /bin/bash explicitly so PATH=/nonexistent doesn't prevent bash from being found
 STDERR_UV02=$(PATH=/nonexistent /bin/bash scripts/init.sh 2>&1 1>/dev/null)
 RC_UV02=$?
+# Pre-compute grep result before assert to avoid eval expanding multi-line STDERR_UV02 with
+# special shell chars (e.g. "iex" in the PowerShell install hint causes eval to try running it).
+echo "$STDERR_UV02" | grep -q 'uv' && UV02_STDERR_MATCH=0 || UV02_STDERR_MATCH=1
 set -e
 assert "T-UV-PREREQ-02: PATH=/nonexistent → exit 1" "[ \"$RC_UV02\" = '1' ]"
-assert "T-UV-PREREQ-02: stderr содержит 'uv'" "echo \"$STDERR_UV02\" | grep -q 'uv'"
+assert "T-UV-PREREQ-02: stderr содержит 'uv'" "[ \"$UV02_STDERR_MATCH\" = '0' ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_UV02"
 
@@ -783,13 +793,16 @@ rm -rf "$TMP_UV04"
 
 # T-UV-PREREQ-05: uv run scripts/validate-content.py exits 0 (PyYAML via PEP 723)
 # NOTE: Tests that uv resolves PyYAML via PEP 723 headers (not global pip install).
-# Runs in a fresh project copy after init so content/ is valid (no content errors unrelated to PEP 723).
+# Uses a minimal synthetic content/ (just _index.md) to avoid property-value errors
+# from SA/BA work-in-progress artifacts in the worktree (those are in scope of this
+# epic but not of this test — this test is about PEP 723 uv resolution, not content
+# validity per se).
 TMP_UV05=$(mktemp -d)
-rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV05/"
+mkdir -p "$TMP_UV05/scripts" "$TMP_UV05/content"
+cp "$REPO_ROOT/scripts/validate-content.py" "$TMP_UV05/scripts/"
+cp "$REPO_ROOT/scripts/_validate_common.py" "$TMP_UV05/scripts/"
+touch "$TMP_UV05/content/_index.md"
 cd "$TMP_UV05"
-git init -q -b main
-git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
-bash scripts/init.sh --profile project "test05" "T05" "desc" "t@x.com" >/dev/null 2>&1 || true
 set +e
 uv run scripts/validate-content.py >/dev/null 2>&1
 RC_UV05=$?
@@ -809,7 +822,9 @@ assert "T-UV-PREREQ-06: ровно 6 .py файлов содержат # /// scr
 # (Historical docs/ archives not in scope per spec section E)
 # grep -rn output format: "filename:linenum:content"
 # Exclude: shebang lines, pure comment lines (#), docstring lines (indented python3 in """)
-UV07_COUNT=$(grep -rn 'python3 ' \
+# pipefail-safe: wrap filter chain in { ...; } with || true so grep -v exiting 1 (no match)
+# doesn't propagate through pipefail and kill the script.
+UV07_COUNT=$( { grep -rn 'python3 ' \
     "$REPO_ROOT/scripts/" \
     "$REPO_ROOT/README.md" \
     "$REPO_ROOT/CLAUDE.md" \
@@ -819,8 +834,7 @@ UV07_COUNT=$(grep -rn 'python3 ' \
   | grep -v '#!/usr/bin/env python3' \
   | grep -v "$REPO_ROOT/scripts/test-template.sh:" \
   | grep -vE ':[0-9]+:[[:space:]]*#' \
-  | grep -vE ':[0-9]+:[[:space:]]+(python3 scripts/)' \
-  | wc -l | tr -d ' ')
+  | grep -vE ':[0-9]+:[[:space:]]+(python3 scripts/)' || true; } | wc -l | tr -d ' ')
 assert "T-UV-PREREQ-07: 0 bare python3 вызовов в scripts/ и ключевых doc-файлах (per spec E)" \
   "[ \"$UV07_COUNT\" = '0' ]"
 

@@ -59,6 +59,37 @@ ls content/00-project/plans/ 2>/dev/null
 
 Записи в `content/00-project/plans/<epic>.md` должны иметь "Status" секцию (active / blocked / done). Если нет — попроси автора эпика обновить.
 
+### Drift-check (SPDD two-way sync)
+
+Выполни drift-check между `private` и `public`:
+
+```bash
+# 1. Определить активный профиль из content/.doc-root.yaml
+# (поле profile: <name>; если отсутствует — INFO-skip, drift-check пропускается)
+
+# 2. Получить список изменённых файлов
+CHANGED_FILES=$(git diff --name-only public..private)
+
+# 3. Получить bypass-reason из commit messages (если есть skip-drift: <reason>)
+# 4. Запустить drift-check
+uv run scripts/_drift_check.py \
+  --changed-files $CHANGED_FILES \
+  --manifest docs/overlays/profiles/<profile>/manifest.yaml \
+  --base-ref public
+```
+
+Алгоритм (детали — `scripts/_drift_check.py` и design-spec §3c):
+- Читает `profile:` из `content/.doc-root.yaml`; если поля нет → `[INFO] no profile marker, drift-check skipped`
+- Читает `drift_pairs` из manifest профиля; если поле отсутствует → `[INFO]` skip
+- Для каждой пары: если downstream-файлы изменились без upstream → `[WARN]`
+- Bypass: `skip-drift: <reason>` trailer в commit message → `[INFO]` (reason не должен быть пустым)
+- Пустой/whitespace-only reason → `[WARN]` о пустом reason
+
+**WARN не блокирует merge автоматически — это soft-fail.** Требует подтверждения PM:
+- PM читает WARN, понимает причину расхождения
+- Принимает решение: merge (если расхождение допустимо) или вернуть на доработку
+- При merge с WARN — добавить `skip-drift: <reason>` в commit или PR description
+
 ## Формат ответа
 
 ```markdown

@@ -5,7 +5,7 @@ properties:
   - name: Статус
     value: [Draft]
   - name: Фаза
-    value: [Анализ]
+    value: [Production]
 ---
 
 # Принудительный запуск Python-скриптов через uv
@@ -139,14 +139,14 @@ properties:
 - Все 9 AC (AC-1 — AC-9) проходят.
 - `git grep 'python3 '` в `scripts/`, `README.md`, `CLAUDE.md`, `docs/` — 0 совпадений вне комментариев и PEP 723 shebang-строк (`#!/usr/bin/env python3`).
 - Каждый `.py`-файл в `scripts/` имеет `# /// script` блок.
-- Артефакт `content/30-requirements/uv-enforcement.md` создан с корректным frontmatter.
+- Артефакт `docs/requirements/uv-enforcement.md` создан с корректным frontmatter.
 - SA получил бриф (см. ниже) и создал архитектурный артефакт.
 
 ---
 
 ## Бриф для SA
 
-**Требование:** `content/30-requirements/uv-enforcement.md` **Фаза:** Анализ → Дизайн
+**Требование:** `docs/requirements/uv-enforcement.md` **Фаза:** Анализ → Дизайн
 
 **Спроектировать:**
 - Функцию `check_prerequisites()` в `init.sh`: точное место вызова, POSIX-корректный синтаксис проверки (`command -v uv`), формат stderr-сообщения.

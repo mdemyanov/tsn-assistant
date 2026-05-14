@@ -1,7 +1,7 @@
 ---
 properties:
   - name: Тип контента
-    value: [Спецификация]
+    value: [Архитектура]
   - name: Статус
     value: [Draft]
 ---
@@ -10,7 +10,7 @@ properties:
 
 ## Контекст
 
-Требование: `content/30-requirements/uv-enforcement.md` (commit fdf647c).  
+Требование: `docs/requirements/uv-enforcement.md` (commit fdf647c).  
 Research: `docs/research/uv-enforcement-landscape.md` (commit db9ee0a).  
 Архитектурный выбор: **Option A — PEP 723 inline metadata** — одобрен owner'ом.
 
@@ -487,9 +487,9 @@ python3 scripts/_apply_profile.py    →  uv run scripts/_apply_profile.py
 
 ## Бриф для Dev
 
-**Архитектура:** `content/40-architecture/uv-enforcement-spec.md`  
-**Требование:** `content/30-requirements/uv-enforcement.md`  
-**ADR:** `content/00-project/adr/ADR-002-uv-required.md`  
+**Архитектура:** `docs/architecture/uv-enforcement-spec.md`  
+**Требование:** `docs/requirements/uv-enforcement.md`  
+**ADR:** `docs/adr/ADR-002-uv-required.md`  
 **Фаза:** Реализация
 
 **Реализовать:**
@@ -503,7 +503,7 @@ python3 scripts/_apply_profile.py    →  uv run scripts/_apply_profile.py
 
 **Порядок:** PEP 723 headers → `_init_helpers.py` → `check_prerequisites()` в init.sh → замена inline python3 → guards → docs → tests.
 
-**Acceptance Criteria из BA:** AC-1 .. AC-9 (полный список — `content/30-requirements/uv-enforcement.md`).
+**Acceptance Criteria из BA:** AC-1 .. AC-9 (полный список — `docs/requirements/uv-enforcement.md`).
 
 ---
 

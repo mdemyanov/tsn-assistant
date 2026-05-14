@@ -657,9 +657,6 @@ cd "$TMP_F4"
 git init -q -b main && git add -A && git -c user.email=t@x -c user.name=t commit -q -m baseline
 
 # T-W3-F4-fast: --fast exit 0
-# NOTE: on epic branch, content/ has SA/BA artifacts with invalid properties →
-# validate-content.py exits 1 → check.sh --fast exits 1.
-# Use set +e to avoid test-template.sh aborting here.
 set +e
 bash scripts/check.sh --fast >/dev/null 2>&1
 RC=$?

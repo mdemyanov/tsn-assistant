@@ -3,12 +3,12 @@ properties:
   - name: Тип контента
     value: [ADR]
   - name: Статус
-    value: [Accepted]
+    value: [Approved]
 ---
 
 # ADR-002: uv обязателен для запуска Python-скриптов шаблона
 
-**Статус:** Accepted  
+**Статус:** Approved  
 **Дата:** 2026-05-14
 
 ---
@@ -19,7 +19,7 @@ properties:
 
 Текущая проблема: все скрипты требуют `pip install pyyaml` глобально на хост-машине. При отсутствии глобального PyYAML скрипты падают с непрозрачными `ImportError` без инструкций по исправлению. Это создаёт неудовлетворительный UX при первом запуске и делает шаблон зависимым от состояния Python-окружения хоста.
 
-Owner-требование (закреплено в `content/30-requirements/uv-enforcement.md`): все Python-скрипты запускаются исключительно через `uv run`; прямой вызов `python3 script.py` запрещён; fallback на системный Python не допускается.
+Owner-требование (закреплено в `docs/requirements/uv-enforcement.md`): все Python-скрипты запускаются исключительно через `uv run`; прямой вызов `python3 script.py` запрещён; fallback на системный Python не допускается.
 
 Landscape-исследование: `docs/research/uv-enforcement-landscape.md`.
 
@@ -86,9 +86,9 @@ Landscape-исследование: `docs/research/uv-enforcement-landscape.md`.
 
 ## Связанные статьи
 
-- `content/30-requirements/uv-enforcement.md` — BRQ с FR/AC/NFR
+- `docs/requirements/uv-enforcement.md` — BRQ с FR/AC/NFR
 - `docs/research/uv-enforcement-landscape.md` — RES-001, landscape и Q1-Q5
-- `content/40-architecture/uv-enforcement-spec.md` — детальная спека реализации
+- `docs/architecture/uv-enforcement-spec.md` — детальная спека реализации
 - [PEP 723](https://peps.python.org/pep-0723/) — спецификация inline script metadata
 - [uv scripts guide](https://docs.astral.sh/uv/guides/scripts/) — `uv run`, PEP 723, `--with` flag
 - [uv installation](https://docs.astral.sh/uv/getting-started/installation/) — per-OS install commands

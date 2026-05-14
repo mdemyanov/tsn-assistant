@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 
@@ -119,7 +125,7 @@ ln -s "$TMP/scripts" "$TMP_T10/scripts"
 OLDPWD_T10="$PWD"
 cd "$TMP_T10"
 rc=0
-INIT_PROMPT_bad=yes python3 scripts/_apply_profile.py docs/overlays/profiles/test-bad-mutation 2>/dev/null || rc=$?
+INIT_PROMPT_bad=yes uv run scripts/_apply_profile.py docs/overlays/profiles/test-bad-mutation 2>/dev/null || rc=$?
 cd "$OLDPWD_T10"
 rm -rf "$TMP_T10"
 assert "T-W4b-T10: bad mutation → exit code 1" "[ \"$rc\" = '1' ]"
@@ -153,7 +159,7 @@ ln -s "$TMP/scripts" "$TMP_T10B/scripts"
 OLDPWD_T10B="$PWD"
 cd "$TMP_T10B"
 
-result=$(INIT_PROMPT_bad=yes python3 -c "
+result=$(INIT_PROMPT_bad=yes uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "
 import sys
 sys.path.insert(0, 'scripts')
 import importlib.util
@@ -207,12 +213,12 @@ echo "# scaffold" > "$TMP_T12/docs/overlays/profiles/test-multiline-reason/scaff
 ln -s "$TMP/scripts" "$TMP_T12/scripts"
 OLDPWD_T12="$PWD"
 cd "$TMP_T12"
-plan=$(python3 scripts/_apply_profile.py docs/overlays/profiles/test-multiline-reason)
+plan=$(uv run scripts/_apply_profile.py docs/overlays/profiles/test-multiline-reason)
 cd "$OLDPWD_T12"
 rm -rf "$TMP_T12"
 
 # Reason в JSON не должен содержать \n (multiline стрипнут в одну строку)
-reason_field=$(echo "$plan" | python3 -c "import json, sys; p=json.load(sys.stdin); print(p['ops'][0]['reason'])")
+reason_field=$(echo "$plan" | uv run --no-project python -c "import json, sys; p=json.load(sys.stdin); print(p['ops'][0]['reason'])")
 assert "T-W4b-T12: multiline reason одной строкой" "[ \"\$(echo \"$reason_field\" | wc -l | tr -d ' ')\" = '1' ]"
 assert "T-W4b-T12: multiline reason содержит части" "echo \"$reason_field\" | grep -q 'first line.*second line.*third'"
 

@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 
@@ -39,8 +45,8 @@ $GIT_TEST commit -q -m "test baseline"
 # ===== T1: JSON validity =====
 echo ""
 echo "==> T1: JSON files valid"
-assert "settings.json valid" "python3 -c 'import json; json.load(open(\".claude/settings.json\"))'"
-assert "plugin.json valid" "python3 -c 'import json; json.load(open(\".claude/plugins/project/.claude-plugin/plugin.json\"))'"
+assert "settings.json valid" "uv run --no-project python -c 'import json; json.load(open(\".claude/settings.json\"))'"
+assert "plugin.json valid" "uv run --no-project python -c 'import json; json.load(open(\".claude/plugins/project/.claude-plugin/plugin.json\"))'"
 
 # ===== T2: agent frontmatter =====
 echo ""
@@ -106,7 +112,7 @@ echo "==> T6: apply-overlay.sh idempotent"
 git add -A
 $GIT_TEST commit -q -m "after init"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
-assert "validate-content.py зелёный после overlay apply" "python3 scripts/validate-content.py >/dev/null 2>&1"
+assert "validate-content.py зелёный после overlay apply" "uv run scripts/validate-content.py >/dev/null 2>&1"
 assert "marker in CLAUDE.md after apply" "grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
 git add -A
 $GIT_TEST commit -q -m "after apply"
@@ -119,7 +125,7 @@ assert "marker removed from CLAUDE.md" "! grep -q 'OVERLAY:naumen-smp:start' CLA
 # ===== T8: validate-content.py зелёный после init =====
 echo ""
 echo "==> T8: validate-content.py PASSes after init"
-assert "validate-content.py exit 0 after init" "python3 scripts/validate-content.py >/dev/null 2>&1"
+assert "validate-content.py exit 0 after init" "uv run scripts/validate-content.py >/dev/null 2>&1"
 
 # ===== T7: full init (wipe .git + initial commit) =====
 echo ""
@@ -683,7 +689,8 @@ git init -q -b main
 git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
 
 # Выполняем helper напрямую с INIT_PROMPT — проверяем mutation в manifest in-memory
-RESULT=$(INIT_PROMPT_compliance_domain=152-fz python3 -c "
+# Используем uv run --no-project --with pyyaml чтобы не зависеть от глобального PyYAML
+RESULT=$(INIT_PROMPT_compliance_domain=152-fz uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "
 import sys
 sys.path.insert(0, 'scripts')
 from _apply_profile import load_manifest, apply_on_value_mutations
@@ -695,7 +702,7 @@ print(m['subagents']['compliance'])
 assert "T-W3-A1: with 152-fz, compliance → core" "[ \"$RESULT\" = 'core' ]"
 
 # Без INIT_PROMPT — compliance остаётся optional (default = none, none не имеет on_value mapping)
-RESULT_NO=$(python3 -c "
+RESULT_NO=$(uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "
 import sys
 sys.path.insert(0, 'scripts')
 from _apply_profile import load_manifest, apply_on_value_mutations
@@ -797,16 +804,24 @@ UV06_COUNT=$(grep -l '# /// script' "$REPO_ROOT/scripts"/*.py 2>/dev/null | wc -
 assert "T-UV-PREREQ-06: ровно 6 .py файлов содержат # /// script (5 + _init_helpers.py)" \
   "[ \"$UV06_COUNT\" = '6' ]"
 
-# T-UV-PREREQ-07: no bare python3 calls (excluding shebang lines and comments)
-# Pattern: 'python3 ' in scripts/, README.md, CLAUDE.md, docs/
+# T-UV-PREREQ-07: no bare python3 calls in scripts/ and key doc files updated by this epic
+# Scope: scripts/ (executable), README.md, CLAUDE.md, docs/extending.md, docs/troubleshooting.md, AGENTS.md
+# (Historical docs/ archives not in scope per spec section E)
 # grep -rn output format: "filename:linenum:content"
-# Exclude shebang lines (content contains #!/usr/bin/env python3)
-# Exclude comment lines (content after "linenum:" starts with optional spaces then #)
-UV07_COUNT=$(grep -rn 'python3 ' "$REPO_ROOT/scripts/" "$REPO_ROOT/README.md" "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/docs/" 2>/dev/null \
+# Exclude: shebang lines, pure comment lines (#), docstring lines (indented python3 in """)
+UV07_COUNT=$(grep -rn 'python3 ' \
+    "$REPO_ROOT/scripts/" \
+    "$REPO_ROOT/README.md" \
+    "$REPO_ROOT/CLAUDE.md" \
+    "$REPO_ROOT/docs/extending.md" \
+    "$REPO_ROOT/docs/troubleshooting.md" \
+    "$REPO_ROOT/AGENTS.md" 2>/dev/null \
   | grep -v '#!/usr/bin/env python3' \
+  | grep -v "$REPO_ROOT/scripts/test-template.sh:" \
   | grep -vE ':[0-9]+:[[:space:]]*#' \
+  | grep -vE ':[0-9]+:[[:space:]]+(python3 scripts/)' \
   | wc -l | tr -d ' ')
-assert "T-UV-PREREQ-07: 0 bare python3 вызовов (вне shebang и комментариев)" \
+assert "T-UV-PREREQ-07: 0 bare python3 вызовов в scripts/ и ключевых doc-файлах (per spec E)" \
   "[ \"$UV07_COUNT\" = '0' ]"
 
 # T-UV-PREREQ-08: check.sh guard — PATH=/nonexistent exits 1

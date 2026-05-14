@@ -2,6 +2,12 @@
 # test-validate-profile.sh — тесты для scripts/validate-profile.py
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VALIDATOR="$REPO_ROOT/scripts/validate-profile.py"
 
@@ -23,7 +29,7 @@ assert() {
 
 # ===== T0: --help работает =====
 echo "==> T0: --help"
-assert "validator --help прошёл" "python3 \"$VALIDATOR\" --help >/dev/null 2>&1"
+assert "validator --help прошёл" "uv run \"$VALIDATOR\" --help >/dev/null 2>&1"
 
 # ===== M1: manifest.yaml present =====
 echo ""
@@ -33,7 +39,7 @@ mkdir -p "$TMP1/docs/overlays/profiles/no-manifest"
 cd "$TMP1"
 
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/no-manifest 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/no-manifest 2>&1)
 RC=$?
 set -e
 assert "M1 exit 1 без manifest.yaml" "[ \"$RC\" = '1' ]"
@@ -59,7 +65,7 @@ compatible_stacks: []
 YAML
 cd "$TMP1B"
 set +e
-python3 "$VALIDATOR" docs/overlays/profiles/has-manifest >/dev/null 2>&1
+uv run "$VALIDATOR" docs/overlays/profiles/has-manifest >/dev/null 2>&1
 RC=$?
 set -e
 assert "M1 exit 0 с manifest.yaml" "[ \"$RC\" = '0' ]"
@@ -77,7 +83,7 @@ description: missing fields
 YAML
 cd "$TMP2"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/incomplete 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/incomplete 2>&1)
 RC=$?
 set -e
 assert "M2 exit 1 без обязательных полей" "[ \"$RC\" = '1' ]"
@@ -105,7 +111,7 @@ compatible_stacks: []
 YAML
 cd "$TMP3"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/foo 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/foo 2>&1)
 RC=$?
 set -e
 assert "M3 exit 1 при name != dir" "[ \"$RC\" = '1' ]"
@@ -143,7 +149,7 @@ compatible_stacks: []
 YAML
 cd "$TMP4"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badrole 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/badrole 2>&1)
 RC=$?
 set -e
 assert "M4 exit 1 при unknown role" "[ \"$RC\" = '1' ]"
@@ -180,7 +186,7 @@ compatible_stacks: []
 YAML
 cd "$TMP5"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badpipe 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/badpipe 2>&1)
 RC=$?
 set -e
 assert "M5 exit 1 при unknown pipeline" "[ \"$RC\" = '1' ]"
@@ -214,7 +220,7 @@ compatible_stacks: []
 YAML
 cd "$TMP6"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badenum 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/badenum 2>&1)
 RC=$?
 set -e
 assert "M6 exit 1 при невалидном enum" "[ \"$RC\" = '1' ]"
@@ -247,7 +253,7 @@ compatible_stacks: []
 YAML
 cd "$TMP7"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badpath 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/badpath 2>&1)
 RC=$?
 set -e
 assert "M7 exit 1 при missing path (status: stable)" "[ \"$RC\" = '1' ]"
@@ -279,7 +285,7 @@ compatible_stacks: []
 YAML
 cd "$TMP7B"
 set +e
-python3 "$VALIDATOR" docs/overlays/profiles/stubok >/dev/null 2>&1
+uv run "$VALIDATOR" docs/overlays/profiles/stubok >/dev/null 2>&1
 RC=$?
 set -e
 assert "M7 stub: exit 0 даже с placeholder paths" "[ \"$RC\" = '0' ]"
@@ -320,7 +326,7 @@ init_prompts:
 YAML
 cd "$TMP8"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m8test 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m8test 2>&1)
 RC=$?
 set -e
 assert "M8 exit 0 (warning, не error)" "[ \"$RC\" = '0' ]"
@@ -354,7 +360,7 @@ compatible_stacks: [known-stack, unknown-stack]
 YAML
 cd "$TMP9"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m9test 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m9test 2>&1)
 RC=$?
 set -e
 assert "M9 exit 0 (warning)" "[ \"$RC\" = '0' ]"
@@ -393,7 +399,7 @@ compatible_stacks: []
 YAML
 cd "$TMP10"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m10test 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m10test 2>&1)
 RC=$?
 set -e
 assert "M10 exit 0 (warning)" "[ \"$RC\" = '0' ]"
@@ -421,7 +427,7 @@ status: stub
 YAML
 cd "$TMP_BAD"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/badyaml 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/badyaml 2>&1)
 RC=$?
 set -e
 assert "M0 exit 1 при невалидном YAML" "[ \"$RC\" = '1' ]"
@@ -449,7 +455,7 @@ compatible_stacks: []
 EOFSV
 cd "$TMP_SV"
 set +e
-OUT=$(python3 scripts/validate-profile.py docs/overlays/profiles/bad-sv 2>&1)
+OUT=$(uv run scripts/validate-profile.py docs/overlays/profiles/bad-sv 2>&1)
 RC=$?
 set -e
 assert "T-W3-A4: error при schema_version: 99" "echo \"$OUT\" | grep -q 'schema_version: 99 не поддерживается'"
@@ -465,7 +471,7 @@ rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_M4V/"
 cd "$TMP_M4V"
 sed -i.bak 's/## Каталог ролей/## Catalog of roles/' AGENTS.md && rm -f AGENTS.md.bak
 set +e
-OUT=$(python3 scripts/validate-profile.py 2>&1)
+OUT=$(uv run scripts/validate-profile.py 2>&1)
 RC=$?
 set -e
 assert "T-W3-A3: warning emit при broken heading" "echo \"$OUT\" | grep -q \"M4 (subagent name validation) skipped\""
@@ -512,7 +518,7 @@ Fake.
 MD
 cd "$TMP_M11_1"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-1 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m11-1 2>&1)
 RC=$?
 set -e
 assert "M11.1 exit 1 при missing base" "[ \"$RC\" = '1' ]"
@@ -560,7 +566,7 @@ agent_overrides:
 YAML
 cd "$TMP_M11_2"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-2 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m11-2 2>&1)
 RC=$?
 set -e
 assert "M11.2 exit 1 при missing source" "[ \"$RC\" = '1' ]"
@@ -616,7 +622,7 @@ Wrong extends.
 MD
 cd "$TMP_M11_3"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-3 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m11-3 2>&1)
 RC=$?
 set -e
 assert "M11.3 exit 1 при extends mismatch" "[ \"$RC\" = '1' ]"
@@ -670,7 +676,7 @@ BA override.
 MD
 cd "$TMP_M11_4"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-4 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m11-4 2>&1)
 RC=$?
 set -e
 assert "M11.4 exit 1 при disabled role с override" "[ \"$RC\" = '1' ]"
@@ -728,7 +734,7 @@ extends: ba
 MD
 cd "$TMP_M11_5"
 set +e
-OUT=$(python3 "$VALIDATOR" docs/overlays/profiles/m11-5 2>&1)
+OUT=$(uv run "$VALIDATOR" docs/overlays/profiles/m11-5 2>&1)
 RC=$?
 set -e
 assert "M11.5 exit 1 при {{super}} в отсутствующей секции" "[ \"$RC\" = '1' ]"

@@ -2,6 +2,12 @@
 # test-validate-content.sh — тесты для scripts/validate-content.py
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VALIDATOR="$REPO_ROOT/scripts/validate-content.py"
 
@@ -43,7 +49,7 @@ YAML
 
 # ===== T0: --help работает =====
 echo "==> T0: --help"
-assert "validator --help прошёл" "python3 \"$VALIDATOR\" --help >/dev/null 2>&1"
+assert "validator --help прошёл" "uv run \"$VALIDATOR\" --help >/dev/null 2>&1"
 
 # ===== C1: missing _index.md =====
 echo ""
@@ -61,7 +67,7 @@ echo 'title: A' >> "$TMP1/content/sub/article.md"
 echo '---' >> "$TMP1/content/sub/article.md"
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP1/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP1/content" 2>&1)
 RC=$?
 set -e
 assert "exit 1 при missing _index.md" "[ \"$RC\" = '1' ]"
@@ -84,7 +90,7 @@ echo 'title: A' >> "$TMP2/content/article.md"
 echo '---' >> "$TMP2/content/article.md"
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP2/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP2/content" 2>&1)
 RC=$?
 set -e
 assert "exit 1 при отсутствии корневого _index.md" "[ \"$RC\" = '1' ]"
@@ -110,7 +116,7 @@ echo 'title: Sub' >> "$TMP3/content/sub/_index.md"
 echo '---' >> "$TMP3/content/sub/_index.md"
 
 set +e
-python3 "$VALIDATOR" "$TMP3/content" >/dev/null 2>&1
+uv run "$VALIDATOR" "$TMP3/content" >/dev/null 2>&1
 RC=$?
 set -e
 assert "exit 0 для каталога с _index.md везде" "[ \"$RC\" = '0' ]"
@@ -137,7 +143,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C2/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C2/content" 2>&1)
 RC=$?
 set -e
 assert "C2 exit 1 при properties в _index.md" "[ \"$RC\" = '1' ]"
@@ -173,7 +179,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C3/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C3/content" 2>&1)
 RC=$?
 set -e
 assert "C3 exit 1 при плоской нотации" "[ \"$RC\" = '1' ]"
@@ -209,7 +215,7 @@ properties:
 MD
 
 set +e
-python3 "$VALIDATOR" "$TMP_C3B/content" >/dev/null 2>&1
+uv run "$VALIDATOR" "$TMP_C3B/content" >/dev/null 2>&1
 RC=$?
 set -e
 assert "C3 object-нотация exit 0" "[ \"$RC\" = '0' ]"
@@ -245,7 +251,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C4/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C4/content" 2>&1)
 RC=$?
 set -e
 assert "C4 exit 1 для незнакомого property" "[ \"$RC\" = '1' ]"
@@ -282,7 +288,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C5/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C5/content" 2>&1)
 RC=$?
 set -e
 assert "C5 exit 1 значение вне enum" "[ \"$RC\" = '1' ]"
@@ -322,7 +328,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C6/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C6/content" 2>&1)
 RC=$?
 set -e
 assert "C6 warning не валит exit code" "[ \"$RC\" = '0' ]"
@@ -350,7 +356,7 @@ title: {{PROJECT_NAME}}
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_C7/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_C7/content" 2>&1)
 RC=$?
 set -e
 assert "C7 exit 0 при плейсхолдере" "[ \"$RC\" = '0' ]"
@@ -386,7 +392,7 @@ properties:
 MD
 
 set +e
-python3 "$VALIDATOR" "$TMP_C7B/content" >/dev/null 2>&1
+uv run "$VALIDATOR" "$TMP_C7B/content" >/dev/null 2>&1
 RC=$?
 set -e
 assert "C7 статья с {{TITLE}} — exit 0" "[ \"$RC\" = '0' ]"
@@ -425,7 +431,7 @@ properties:
 MD
 
 set +e
-OUT=$(python3 "$VALIDATOR" "$TMP_DR/content" 2>&1)
+OUT=$(uv run "$VALIDATOR" "$TMP_DR/content" 2>&1)
 RC=$?
 set -e
 assert "C7-doc-root exit 0" "[ \"$RC\" = '0' ]"
@@ -436,8 +442,8 @@ rm -rf "$TMP_DR"
 # ===== Shared module sanity =====
 echo ""
 echo "==> SHARED: _validate_common.py importable"
-assert "import _validate_common works" "python3 -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); import _validate_common; print(_validate_common.PLACEHOLDER_RE.pattern)' >/dev/null 2>&1"
-assert "Issue dataclass exposed" "python3 -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); from _validate_common import Issue; i = Issue(\"error\", \"x\", \"y\"); print(i.level)' | grep -q '^error$'"
+assert "import _validate_common works" "uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); import _validate_common; print(_validate_common.PLACEHOLDER_RE.pattern)' >/dev/null 2>&1"
+assert "Issue dataclass exposed" "uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c 'import sys; sys.path.insert(0, \"$REPO_ROOT/scripts\"); from _validate_common import Issue; i = Issue(\"error\", \"x\", \"y\"); print(i.level)' | grep -q '^error$'"
 
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

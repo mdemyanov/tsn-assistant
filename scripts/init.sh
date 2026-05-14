@@ -7,30 +7,9 @@ set -euo pipefail
 # ===== Helper functions =====
 
 print_profile_menu() {
-  # Собрать список профилей через python3 (YAML parse + sort)
+  # Собрать список профилей через _init_helpers.py (YAML parse + sort)
   local PROFILES_JSON
-  PROFILES_JSON=$(python3 -c "
-import yaml, json, os, glob
-profiles = []
-for mf in glob.glob('docs/overlays/profiles/*/manifest.yaml'):
-    try:
-        m = yaml.safe_load(open(mf))
-        profiles.append({
-            'name':        m.get('name', os.path.basename(os.path.dirname(mf))),
-            'description': m.get('description', ''),
-            'audience':    m.get('audience') or '',
-            'status':      m.get('status', 'stable'),
-        })
-    except Exception:
-        pass  # битый manifest — пропустить без crash
-# sort: project first, stable alphabetically, остальные в конце
-def sort_key(p):
-    if p['name'] == 'project': return (0, '')
-    if p['status'] == 'stable': return (1, p['name'])
-    return (2, p['name'])
-profiles.sort(key=sort_key)
-print(json.dumps(profiles))
-" 2>/dev/null || echo "[]")
+  PROFILES_JSON=$(uv run scripts/_init_helpers.py list-profiles 2>/dev/null || echo "[]")
 
   if [[ -z "$PROFILES_JSON" ]] || [[ "$PROFILES_JSON" == "[]" ]]; then
     # Fallback на legacy-вывод
@@ -46,22 +25,9 @@ print(json.dumps(profiles))
 
   echo "Available profiles:"
   local MAX_LEN
-  MAX_LEN=$(echo "$PROFILES_JSON" | python3 -c "
-import json, sys
-ps = json.load(sys.stdin)
-print(max(len(p['name']) for p in ps) if ps else 7)
-" 2>/dev/null || echo "7")
+  MAX_LEN=$(echo "$PROFILES_JSON" | uv run scripts/_init_helpers.py menu-max-len 2>/dev/null || echo "7")
 
-  echo "$PROFILES_JSON" | python3 -c "
-import json, sys
-ps = json.load(sys.stdin)
-max_len = $MAX_LEN
-for p in ps:
-    line = '  {:<{w}} — {}'.format(p['name'], p['description'], w=max_len)
-    if p.get('audience'):
-        line += ' [для: {}]'.format(p['audience'])
-    print(line)
-" 2>/dev/null
+  echo "$PROFILES_JSON" | uv run scripts/_init_helpers.py menu-format --max-len "$MAX_LEN" 2>/dev/null
 }
 
 print_profile_summary() {
@@ -73,50 +39,7 @@ print_profile_summary() {
     return 0
   fi
 
-  python3 -c "
-import yaml, sys
-profile = '$profile'
-mf = 'docs/overlays/profiles/' + profile + '/manifest.yaml'
-try:
-    m = yaml.safe_load(open(mf))
-except Exception as e:
-    print('Warning: cannot read manifest for profile ' + repr(profile) + ': ' + str(e))
-    sys.exit(0)
-
-desc      = m.get('description', '')
-audience  = m.get('audience') or ''
-ops       = m.get('operations') or []
-overrides = m.get('agent_overrides') or {}
-subagents = m.get('subagents') or {}
-prompts   = m.get('init_prompts') or []
-
-op_add     = sum(1 for o in ops if o.get('op') == 'add')
-op_replace = sum(1 for o in ops if o.get('op') == 'replace')
-op_resolve = sum(1 for o in ops if o.get('op') == 'resolve_agents')
-op_total   = len(ops)
-
-override_names = list(overrides.keys())
-
-core_count     = sum(1 for v in subagents.values() if v == 'core')
-optional_count = sum(1 for v in subagents.values() if v == 'optional')
-disabled_count = sum(1 for v in subagents.values() if v == 'disabled')
-
-print('Profile: ' + profile + ' — ' + desc)
-print('  Description : ' + desc)
-if audience:
-    print('  Audience    : ' + audience)
-ops_detail = 'add: {}, replace: {}'.format(op_add, op_replace)
-if op_resolve:
-    ops_detail += ', resolve_agents: {}'.format(op_resolve)
-print('  Operations  : {} ({})'.format(op_total, ops_detail))
-if override_names:
-    print('  Overrides   : {} ({})'.format(len(override_names), ', '.join(override_names)))
-else:
-    print('  Overrides   : 0')
-print('  Subagents   : {} core, {} optional, {} disabled'.format(
-    core_count, optional_count, disabled_count))
-print('  Init prompts: {}'.format(len(prompts)))
-" 2>/dev/null || echo "Warning: cannot read manifest for profile '${profile}'"
+  uv run scripts/_init_helpers.py profile-summary "$profile" 2>/dev/null || echo "Warning: cannot read manifest for profile '${profile}'"
 }
 
 confirm_apply() {
@@ -147,7 +70,39 @@ confirm_apply() {
   esac
 }
 
+check_prerequisites() {
+  if ! command -v uv >/dev/null 2>&1; then
+    echo "ERROR: 'uv' не найден в PATH." >&2
+    echo "" >&2
+    echo "Установите uv и перезапустите init.sh:" >&2
+    echo "" >&2
+    echo "  macOS (Homebrew — рекомендован):" >&2
+    echo "    brew install uv" >&2
+    echo "" >&2
+    echo "  macOS / Linux (curl-installer):" >&2
+    echo "    curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+    echo "" >&2
+    echo "  Windows (WinGet):" >&2
+    echo "    winget install --id=astral-sh.uv -e" >&2
+    echo "" >&2
+    echo "  Windows (PowerShell):" >&2
+    echo "    powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"" >&2
+    echo "" >&2
+    echo "Примечание: если uv установлен, но не найден — добавьте его в PATH." >&2
+    echo "  Типичные пути: ~/.local/bin, ~/.cargo/bin (зависит от установщика)." >&2
+    echo "  Официальный установщик добавляет uv в PATH автоматически при следующем" >&2
+    echo "  открытии shell. Перезапустите shell или выполните:" >&2
+    echo "    source \$HOME/.local/bin/env   # или аналогичный файл из вывода установщика" >&2
+    echo "" >&2
+    echo "Документация: https://docs.astral.sh/uv/getting-started/installation/" >&2
+    exit 1
+  fi
+}
+
 # ===== End helper functions =====
+
+# ===== Main =====
+check_prerequisites
 
 # T40: parse --profile flag BEFORE positional args
 PROFILE=""
@@ -290,23 +245,18 @@ if [[ -n "$PROFILE" ]]; then
   echo "Applying profile overlay '$PROFILE'..."
 
   # T7 (W3-A1): Собрать ответы init_prompts из manifest + export как INIT_PROMPT_<id>
-  if command -v python3 >/dev/null 2>&1; then
-    PROMPTS_JSON=$(python3 -c "
-import yaml, json
-m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
-print(json.dumps(m.get('init_prompts') or []))
-" 2>/dev/null)
+  PROMPTS_JSON=$(uv run scripts/_init_helpers.py init-prompts "$PROFILE" 2>/dev/null || echo "[]")
 
     if [[ -n "$PROMPTS_JSON" ]] && [[ "$PROMPTS_JSON" != "[]" ]]; then
       # Получить количество prompts
-      PROMPTS_COUNT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+      PROMPTS_COUNT=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py json-count 2>/dev/null || echo "0")
 
       for i in $(seq 0 $((PROMPTS_COUNT - 1))); do
-        PROMPT_ID=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('id', ''))")
-        PROMPT_TEXT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('prompt', ''))")
-        PROMPT_TYPE=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('type', 'string'))")
-        PROMPT_DEFAULT=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; print(p.get('default', ''))")
-        PROMPT_CHOICES=$(echo "$PROMPTS_JSON" | python3 -c "import json,sys; p=json.load(sys.stdin)[$i]; c=p.get('choices') or []; print('|'.join(c))")
+        PROMPT_ID=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py prompt-field "$i" id 2>/dev/null || echo "")
+        PROMPT_TEXT=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py prompt-field "$i" prompt 2>/dev/null || echo "")
+        PROMPT_TYPE=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py prompt-field "$i" type 2>/dev/null || echo "string")
+        PROMPT_DEFAULT=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py prompt-field "$i" default 2>/dev/null || echo "")
+        PROMPT_CHOICES=$(echo "$PROMPTS_JSON" | uv run scripts/_init_helpers.py prompt-field "$i" choices 2>/dev/null || echo "")
 
         if [[ -z "$PROMPT_ID" ]]; then continue; fi
 
@@ -343,7 +293,6 @@ print(json.dumps(m.get('init_prompts') or []))
         echo "  ✓ INIT_PROMPT_$PROMPT_ID=$ANSWER"
       done
     fi
-  fi
 
   # --force нужен потому что Wave 1 scaffold (30-requirements/, 40-architecture/...)
   # содержит реальный baseline-контент, который kb-team / другие профили удаляют.
@@ -363,12 +312,7 @@ print(json.dumps(m.get('init_prompts') or []))
   done < <(find content -name '*.md' -o -name '*.yaml' 2>/dev/null)
 
   # Опц. stack-overlay'и из compatible_stacks
-  COMPAT_STACKS=$(python3 -c "
-import yaml
-m = yaml.safe_load(open('docs/overlays/profiles/$PROFILE/manifest.yaml'))
-s = m.get('compatible_stacks') or []
-print(','.join(s) if s and s != ['*'] else '')
-" 2>/dev/null)
+  COMPAT_STACKS=$(uv run scripts/_init_helpers.py compat-stacks "$PROFILE" 2>/dev/null || echo "")
 
   if [[ -n "$COMPAT_STACKS" ]] && [[ "${INIT_SKIP_GIT_RESET:-0}" != "1" ]] && [[ -t 0 ]]; then
     echo "Совместимые stack-overlay'и для профиля '$PROFILE': $COMPAT_STACKS"
@@ -385,17 +329,15 @@ print(','.join(s) if s and s != ['*'] else '')
 fi
 
 # 4.6 — T40: Валидация
-if command -v python3 >/dev/null 2>&1; then
-  if [[ -f scripts/validate-content.py ]]; then
-    python3 scripts/validate-content.py >/dev/null || {
-      echo "WARNING: validate-content.py exit non-zero — проверь content/" >&2
-    }
-  fi
-  if [[ -n "$PROFILE" ]] && [[ -f scripts/validate-profile.py ]]; then
-    python3 scripts/validate-profile.py >/dev/null || {
-      echo "WARNING: validate-profile.py exit non-zero" >&2
-    }
-  fi
+if [[ -f scripts/validate-content.py ]]; then
+  uv run scripts/validate-content.py >/dev/null || {
+    echo "WARNING: validate-content.py exit non-zero — проверь content/" >&2
+  }
+fi
+if [[ -n "$PROFILE" ]] && [[ -f scripts/validate-profile.py ]]; then
+  uv run scripts/validate-profile.py >/dev/null || {
+    echo "WARNING: validate-profile.py exit non-zero" >&2
+  }
 fi
 
 # 5. Wipe .git и initial commit (или skip для тестов)

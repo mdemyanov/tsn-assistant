@@ -738,7 +738,8 @@ cd "$TMP_UV02"
 git init -q -b main
 git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
 set +e
-STDERR_UV02=$(PATH=/nonexistent bash scripts/init.sh 2>&1 1>/dev/null)
+# Use /bin/bash explicitly so PATH=/nonexistent doesn't prevent bash from being found
+STDERR_UV02=$(PATH=/nonexistent /bin/bash scripts/init.sh 2>&1 1>/dev/null)
 RC_UV02=$?
 set -e
 assert "T-UV-PREREQ-02: PATH=/nonexistent → exit 1" "[ \"$RC_UV02\" = '1' ]"
@@ -753,7 +754,7 @@ cd "$TMP_UV03"
 git init -q -b main
 git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
 set +e
-INIT_FORCE=1 PATH=/nonexistent bash scripts/init.sh >/dev/null 2>&1
+INIT_FORCE=1 PATH=/nonexistent /bin/bash scripts/init.sh >/dev/null 2>&1
 RC_UV03=$?
 set -e
 assert "T-UV-PREREQ-03: INIT_FORCE=1 + no uv → exit 1 (prereq не обходится)" "[ \"$RC_UV03\" = '1' ]"
@@ -767,7 +768,7 @@ cd "$TMP_UV04"
 git init -q -b main
 git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
 set +e
-PATH=/nonexistent bash scripts/init.sh >/dev/null 2>&1
+PATH=/nonexistent /bin/bash scripts/init.sh >/dev/null 2>&1
 set -e
 assert "T-UV-PREREQ-04: .git существует после prereq fail (destructive ops не выполнились)" "[ -d .git ] && [ -n \"\$(ls -A .git 2>/dev/null)\" ]"
 cd "$REPO_ROOT"
@@ -810,7 +811,7 @@ assert "T-UV-PREREQ-07: 0 bare python3 вызовов (вне shebang и ком�
 
 # T-UV-PREREQ-08: check.sh guard — PATH=/nonexistent exits 1
 set +e
-PATH=/nonexistent bash "$REPO_ROOT/scripts/check.sh" --fast >/dev/null 2>&1
+PATH=/nonexistent /bin/bash "$REPO_ROOT/scripts/check.sh" --fast >/dev/null 2>&1
 RC_UV08=$?
 set -e
 assert "T-UV-PREREQ-08: check.sh без uv → exit 1" "[ \"$RC_UV08\" = '1' ]"

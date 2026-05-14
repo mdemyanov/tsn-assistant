@@ -166,6 +166,15 @@ def cmd_prompt_field(args: argparse.Namespace) -> None:
         print("")
 
 
+def cmd_json_count(args: argparse.Namespace) -> None:
+    """json-count: длина JSON-массива из stdin (stdlib-only, без PyYAML)."""
+    try:
+        data = json.load(sys.stdin)
+        print(len(data) if isinstance(data, list) else 0)
+    except (json.JSONDecodeError, TypeError):
+        print(0)
+
+
 def cmd_compat_stacks(args: argparse.Namespace) -> None:
     """compat-stacks <profile>: compatible_stacks через запятую (или пусто)."""
     profile = args.profile
@@ -210,6 +219,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_pf.add_argument("index", type=int, help="индекс prompt'а (0-based)")
     p_pf.add_argument("field", help="имя поля: id, prompt, type, default, choices")
 
+    # json-count (reads JSON array from stdin)
+    sub.add_parser("json-count", help="длина JSON-массива из stdin")
+
     # compat-stacks
     p_cs = sub.add_parser("compat-stacks", help="compatible_stacks через запятую")
     p_cs.add_argument("profile", help="имя профиля")
@@ -218,13 +230,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 COMMANDS = {
-    "list-profiles":  cmd_list_profiles,
-    "menu-max-len":   cmd_menu_max_len,
-    "menu-format":    cmd_menu_format,
+    "list-profiles":   cmd_list_profiles,
+    "menu-max-len":    cmd_menu_max_len,
+    "menu-format":     cmd_menu_format,
     "profile-summary": cmd_profile_summary,
-    "init-prompts":   cmd_init_prompts,
-    "prompt-field":   cmd_prompt_field,
-    "compat-stacks":  cmd_compat_stacks,
+    "init-prompts":    cmd_init_prompts,
+    "prompt-field":    cmd_prompt_field,
+    "json-count":      cmd_json_count,
+    "compat-stacks":   cmd_compat_stacks,
 }
 
 

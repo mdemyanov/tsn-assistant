@@ -49,23 +49,23 @@ RES-001 ──→ BA-001 ──→ SA-001 ──→ QA-001 ──→ DEV-001..00
 
 ### Phase 1 — Researcher (RES-001, опц., ~10 мин)
 - **Input:** статья SPDD + comparison-insight в `/Users/mdemyanov/Documents/naumen-cto/`
-- **Output:** `content/10-domain/spdd-key-principles.md` (≤300 слов, цитаты с якорями)
+- **Output:** `docs/research/spdd-key-principles.md` (≤300 слов, цитаты с якорями)
 - **GO:** заметка существует, три ключевые идеи зафиксированы
 
 ### Phase 2 — BA (BA-001..003)
-- **BA-001** «Two-way sync rule» → `content/30-requirements/spdd-two-way-sync.md`
-- **BA-002** «Invariants & Safeguards» → `content/30-requirements/spdd-safeguards-section.md`
-- **BA-003** «Drift-check в /pm-review» → `content/30-requirements/spdd-drift-check.md`
+- **BA-001** «Two-way sync rule» → `docs/requirements/spdd-two-way-sync.md`
+- **BA-002** «Invariants & Safeguards» → `docs/requirements/spdd-safeguards-section.md`
+- **BA-003** «Drift-check в /pm-review» → `docs/requirements/spdd-drift-check.md`
 - **Dogfooding:** каждая из трёх статей включает секцию «Инварианты и Safeguards» (она же — предмет BA-002)
 - **GO:** AC сформулированы; статьи валидны `validate-content.py`
 
 ### Phase 3 — SA (SA-001)
-- `content/00-project/adr/ADR-004-spdd-integration.md` (status: accepted)
+- `docs/adr/ADR-004-spdd-integration.md` (status: accepted)
 - `docs/superpowers/specs/2026-05-14-spdd-integration-design.md` (дизайн по всем 7 профилям, схема расширения manifest.yaml, контракт drift-check)
 - **GO:** ADR принят; spec покрывает 7 профилей; схема manifest зафиксирована
 
 ### Phase 4 — QA-author (QA-001)
-- Test plan: `content/30-requirements/spdd-integration-test-plan.md`
+- Test plan: `docs/requirements/spdd-integration-test-plan.md`
 - Failing stubs:
   - `scripts/tests/test_drift_pairs_in_manifests.py`
   - `scripts/tests/test_safeguards_section_template.py`
@@ -124,10 +124,10 @@ RES-001 ──→ BA-001 ──→ SA-001 ──→ QA-001 ──→ DEV-001..00
 
 | # | Файл | Создатель |
 |---|------|-----------|
-| 1 | `content/10-domain/spdd-key-principles.md` | RES-001 |
-| 2 | `content/30-requirements/spdd-{two-way-sync,safeguards-section,drift-check}.md` | BA-001..003 |
-| 3 | `content/30-requirements/spdd-integration-test-plan.md` | QA-001 |
-| 4 | `content/00-project/adr/ADR-004-spdd-integration.md` | SA-001 |
+| 1 | `docs/research/spdd-key-principles.md` | RES-001 |
+| 2 | `docs/requirements/spdd-{two-way-sync,safeguards-section,drift-check}.md` | BA-001..003 |
+| 3 | `docs/requirements/spdd-integration-test-plan.md` | QA-001 |
+| 4 | `docs/adr/ADR-004-spdd-integration.md` | SA-001 |
 | 5 | `docs/superpowers/specs/2026-05-14-spdd-integration-design.md` | SA-001 |
 | 6 | `docs/superpowers/plans/2026-05-14-spdd-integration.md` | PM (этот файл) |
 | 7 | `scripts/tests/test_*.py` (4 файла) | QA-001 |

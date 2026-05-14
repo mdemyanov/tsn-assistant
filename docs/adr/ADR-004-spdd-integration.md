@@ -26,7 +26,7 @@ Thoughtworks опубликовали SPDD (Structured-Prompt-Driven Development
 
 Шаблон поддерживает 7 профилей: project, product, kb-team, kb-product, methodology, course, custom. Четыре из них (kb-team, kb-product, methodology, course) — content-only: они не используют `src/` и роли SA/Dev. Любое решение должно работать для всех 7 профилей без специальных случаев для content-only.
 
-Источники: kickoff-спека `docs/superpowers/specs/2026-05-14-spdd-integration-kickoff-prompt.md`; research-note `content/10-domain/spdd-key-principles.md`; BA-требования BA-001, BA-002, BA-003 (`content/30-requirements/spdd-*.md`).
+Источники: kickoff-спека `docs/superpowers/specs/2026-05-14-spdd-integration-kickoff-prompt.md`; research-note `docs/research/spdd-key-principles.md`; BA-требования BA-001, BA-002, BA-003 (`docs/requirements/spdd-*.md`).
 
 ---
 
@@ -124,8 +124,8 @@ Thoughtworks опубликовали SPDD (Structured-Prompt-Driven Development
 
 - Kickoff-спека: `docs/superpowers/specs/2026-05-14-spdd-integration-kickoff-prompt.md`
 - PM-план: `docs/superpowers/plans/2026-05-14-spdd-integration.md`
-- Research-note: `content/10-domain/spdd-key-principles.md`
-- BA-001: `content/30-requirements/spdd-two-way-sync.md`
-- BA-002: `content/30-requirements/spdd-safeguards-section.md`
-- BA-003: `content/30-requirements/spdd-drift-check.md`
+- Research-note: `docs/research/spdd-key-principles.md`
+- BA-001: `docs/requirements/spdd-two-way-sync.md`
+- BA-002: `docs/requirements/spdd-safeguards-section.md`
+- BA-003: `docs/requirements/spdd-drift-check.md`
 - Design-spec: `docs/superpowers/specs/2026-05-14-spdd-integration-design.md`

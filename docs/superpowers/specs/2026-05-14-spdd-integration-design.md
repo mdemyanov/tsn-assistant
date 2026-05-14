@@ -3,8 +3,8 @@
 **Дата:** 2026-05-14
 **Автор:** SA-agent
 **Фаза:** MVP
-**ADR:** `content/00-project/adr/ADR-004-spdd-integration.md`
-**BA-входы:** BA-001, BA-002, BA-003 (`content/30-requirements/spdd-*.md`)
+**ADR:** `docs/adr/ADR-004-spdd-integration.md`
+**BA-входы:** BA-001, BA-002, BA-003 (`docs/requirements/spdd-*.md`)
 
 ---
 

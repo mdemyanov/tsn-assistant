@@ -34,6 +34,47 @@ assert() {
   fi
 }
 
+# ===== SPDD helper =====
+# verify_spdd_invariants <profile> <target_dir>
+# Checks 6 SPDD invariants for an already-initialised project at <target_dir>.
+verify_spdd_invariants() {
+  local profile="$1"
+  local target_dir="$2"
+
+  # 1. CLAUDE.md contains the two-way sync section marker
+  assert "${profile}: CLAUDE.md содержит '## Правило two-way sync'" \
+    "grep -q '## Правило two-way sync' \"${target_dir}/CLAUDE.md\""
+
+  # 2. ba-agent.md contains the Safeguards section
+  assert "${profile}: ba-agent.md содержит '## Инварианты и Safeguards'" \
+    "grep -qF '## Инварианты и Safeguards' \"${target_dir}/.claude/plugins/project/agents/ba-agent.md\""
+
+  # 3. tech-writer-agent.md contains the Safeguards section
+  assert "${profile}: tech-writer-agent.md содержит '## Инварианты и Safeguards'" \
+    "grep -qF '## Инварианты и Safeguards' \"${target_dir}/.claude/plugins/project/agents/tech-writer-agent.md\""
+
+  # 4. manifest.yaml contains drift_pairs key (non-empty for non-custom; [] present for custom)
+  local manifest_path="${REPO_ROOT}/docs/overlays/profiles/${profile}/manifest.yaml"
+  assert "${profile}: manifest.yaml содержит ключ 'drift_pairs'" \
+    "grep -q 'drift_pairs' \"${manifest_path}\""
+  if [[ "$profile" == "custom" ]]; then
+    assert "${profile}: manifest.yaml drift_pairs == [] (custom — пустой массив)" \
+      "grep -qE 'drift_pairs:[[:space:]]*\[\]' \"${manifest_path}\""
+  else
+    # non-custom: drift_pairs must have at least one entry (non-empty list = has upstream: key after drift_pairs)
+    assert "${profile}: manifest.yaml drift_pairs непустой (не custom)" \
+      "grep -A1 'drift_pairs:' \"${manifest_path}\" | grep -qE '^\s*-'"
+  fi
+
+  # 5. content/.doc-root.yaml contains profile: <name>
+  assert "${profile}: content/.doc-root.yaml содержит 'profile: ${profile}'" \
+    "grep -qE '^profile:[[:space:]]*${profile}$' \"${target_dir}/content/.doc-root.yaml\""
+
+  # 6. scripts/_drift_check.py exists in the initialised project
+  assert "${profile}: scripts/_drift_check.py существует в проекте" \
+    "[ -f \"${target_dir}/scripts/_drift_check.py\" ]"
+}
+
 echo "==> Setting up test repo at $TMP"
 rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP/"
 cd "$TMP"
@@ -809,10 +850,13 @@ assert "T-UV-PREREQ-05: uv run scripts/validate-content.py exit 0 (PEP 723 resol
 cd "$REPO_ROOT"
 rm -rf "$TMP_UV05"
 
-# T-UV-PREREQ-06: exactly 6 .py files have # /// script (5 existing + _init_helpers.py)
+# T-UV-PREREQ-06: all top-level scripts/*.py files must carry a # /// script PEP-723 header.
+# Dynamic check: count files with header == count of all .py files in scripts/ (top-level).
+# After spdd-integration-DEV-005: 7 files (6 existing + _drift_check.py).
+UV06_TOTAL=$(ls "$REPO_ROOT/scripts"/*.py 2>/dev/null | wc -l | tr -d ' ')
 UV06_COUNT=$(grep -l '# /// script' "$REPO_ROOT/scripts"/*.py 2>/dev/null | wc -l | tr -d ' ')
-assert "T-UV-PREREQ-06: ровно 6 .py файлов содержат # /// script (5 + _init_helpers.py)" \
-  "[ \"$UV06_COUNT\" = '6' ]"
+assert "T-UV-PREREQ-06: все .py в scripts/ содержат # /// script (PEP-723) — $UV06_COUNT/$UV06_TOTAL" \
+  "[ \"$UV06_COUNT\" = \"$UV06_TOTAL\" ]"
 
 # T-UV-PREREQ-07: no bare python3 calls in scripts/ and key doc files updated by this epic
 # Scope: scripts/ (executable), README.md, CLAUDE.md, docs/extending.md, docs/troubleshooting.md, AGENTS.md
@@ -849,6 +893,25 @@ assert "T-UV-PREREQ-09: README.md содержит ## Prerequisites" \
 # T-UV-PREREQ-10: _init_helpers.py exists and has # /// script
 assert "T-UV-PREREQ-10: scripts/_init_helpers.py существует и содержит # /// script" \
   "[ -f \"$REPO_ROOT/scripts/_init_helpers.py\" ] && grep -q '# /// script' \"$REPO_ROOT/scripts/_init_helpers.py\""
+
+# ===== T-SPDD: SPDD invariants for all 7 profiles =====
+echo ""
+echo "==> T-SPDD: SPDD invariants для всех 7 профилей (two-way sync, Safeguards, drift_pairs, doc-root, drift_check)"
+
+for SPDD_PROFILE in project product kb-team kb-product methodology course custom; do
+  echo ""
+  echo "  --- profile: ${SPDD_PROFILE} ---"
+  TMP_SPDD=$(mktemp -d)
+  rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_SPDD/"
+  (
+    cd "$TMP_SPDD"
+    git init -q -b main
+    git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+    bash scripts/init.sh --profile "$SPDD_PROFILE" "Test" "TST" "desc" "test@x.com" >/dev/null 2>&1
+  )
+  verify_spdd_invariants "$SPDD_PROFILE" "$TMP_SPDD"
+  rm -rf "$TMP_SPDD"
+done
 
 # ===== Summary =====
 echo ""

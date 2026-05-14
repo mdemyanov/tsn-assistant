@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pyyaml>=6.0,<7.0",
+# ]
+# ///
 """_resolve_agents.py — base + delta merge resolver for agent prompts.
 
 Reads base prompts from .claude/plugins/project/agents/<role>-agent.md and

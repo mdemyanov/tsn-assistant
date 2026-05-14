@@ -27,7 +27,7 @@ FAQ-стиль guide частых проблем и решений.
 **Причина:** invalid YAML в manifest, несуществующий on_value path, или invalid INIT_PROMPT value.
 
 **Решение:**
-1. Запусти helper напрямую: `python3 scripts/_apply_profile.py docs/overlays/profiles/<name> 2>&1`.
+1. Запусти helper напрямую: `uv run scripts/_apply_profile.py docs/overlays/profiles/<name> 2>&1`.
 2. Прочитай stderr — там точная причина (какой ключ, какое значение).
 
 ## init.sh
@@ -146,6 +146,18 @@ FAQ-стиль guide частых проблем и решений.
 **Причина 2:** Roles в `subagents.X: disabled` — resolver пропускает disabled роли. M11.4 поймает inconsistency.
 
 **Причина 3:** IDE кэширует старую версию prompt. Restart Claude Code session.
+
+## `uv` не найден
+
+**Симптом:** `init.sh`, `check.sh` или `test-*.sh` завершается с `ERROR: 'uv' не найден в PATH`.
+
+**Причины и решения:**
+
+1. **uv не установлен** — установите через `brew install uv` (macOS) или `curl -LsSf https://astral.sh/uv/install.sh | sh` (Linux/macOS).
+2. **uv установлен, но не в PATH** — добавьте `~/.local/bin` или `~/.cargo/bin` в `PATH`. Официальный установщик делает это автоматически при следующем открытии shell.
+3. **uv в CI** — используйте `astral-sh/setup-uv@v4` (с `enable-cache: true`) до вызова скриптов шаблона.
+
+Документация: [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
 ## Не нашёл свой случай?
 

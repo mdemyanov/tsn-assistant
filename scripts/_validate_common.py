@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pyyaml>=6.0,<7.0",
+# ]
+# ///
 """Shared utilities for validate-content.py and validate-profile.py."""
 from __future__ import annotations
 

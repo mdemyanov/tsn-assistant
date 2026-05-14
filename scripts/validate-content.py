@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pyyaml>=6.0,<7.0",
+# ]
+# ///
 """validate-content.py — валидатор структуры Gramax-каталога.
 
 Проверяет content/ на соответствие правилам Gramax (см. CLAUDE.md / spec).

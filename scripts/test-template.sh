@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 
@@ -39,8 +45,8 @@ $GIT_TEST commit -q -m "test baseline"
 # ===== T1: JSON validity =====
 echo ""
 echo "==> T1: JSON files valid"
-assert "settings.json valid" "python3 -c 'import json; json.load(open(\".claude/settings.json\"))'"
-assert "plugin.json valid" "python3 -c 'import json; json.load(open(\".claude/plugins/project/.claude-plugin/plugin.json\"))'"
+assert "settings.json valid" "uv run --no-project python -c 'import json; json.load(open(\".claude/settings.json\"))'"
+assert "plugin.json valid" "uv run --no-project python -c 'import json; json.load(open(\".claude/plugins/project/.claude-plugin/plugin.json\"))'"
 
 # ===== T2: agent frontmatter =====
 echo ""
@@ -106,7 +112,7 @@ echo "==> T6: apply-overlay.sh idempotent"
 git add -A
 $GIT_TEST commit -q -m "after init"
 bash scripts/apply-overlay.sh naumen-smp >/dev/null
-assert "validate-content.py зелёный после overlay apply" "python3 scripts/validate-content.py >/dev/null 2>&1"
+assert "validate-content.py зелёный после overlay apply" "uv run scripts/validate-content.py >/dev/null 2>&1"
 assert "marker in CLAUDE.md after apply" "grep -q 'OVERLAY:naumen-smp:start' CLAUDE.md"
 git add -A
 $GIT_TEST commit -q -m "after apply"
@@ -119,7 +125,7 @@ assert "marker removed from CLAUDE.md" "! grep -q 'OVERLAY:naumen-smp:start' CLA
 # ===== T8: validate-content.py зелёный после init =====
 echo ""
 echo "==> T8: validate-content.py PASSes after init"
-assert "validate-content.py exit 0 after init" "python3 scripts/validate-content.py >/dev/null 2>&1"
+assert "validate-content.py exit 0 after init" "uv run scripts/validate-content.py >/dev/null 2>&1"
 
 # ===== T7: full init (wipe .git + initial commit) =====
 echo ""
@@ -651,13 +657,17 @@ cd "$TMP_F4"
 git init -q -b main && git add -A && git -c user.email=t@x -c user.name=t commit -q -m baseline
 
 # T-W3-F4-fast: --fast exit 0
+set +e
 bash scripts/check.sh --fast >/dev/null 2>&1
 RC=$?
+set -e
 assert "T-W3-F4-fast: --fast exit 0" "[ \"$RC\" = '0' ]"
 
 # T-W3-F4-help: --help exit 0
+set +e
 bash scripts/check.sh --help >/dev/null 2>&1
 RC=$?
+set -e
 assert "T-W3-F4-help: --help exit 0" "[ \"$RC\" = '0' ]"
 
 # T-W3-F4-invalid: --invalid exit 2
@@ -683,7 +693,8 @@ git init -q -b main
 git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
 
 # Выполняем helper напрямую с INIT_PROMPT — проверяем mutation в manifest in-memory
-RESULT=$(INIT_PROMPT_compliance_domain=152-fz python3 -c "
+# Используем uv run --no-project --with pyyaml чтобы не зависеть от глобального PyYAML
+RESULT=$(INIT_PROMPT_compliance_domain=152-fz uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "
 import sys
 sys.path.insert(0, 'scripts')
 from _apply_profile import load_manifest, apply_on_value_mutations
@@ -695,7 +706,7 @@ print(m['subagents']['compliance'])
 assert "T-W3-A1: with 152-fz, compliance → core" "[ \"$RESULT\" = 'core' ]"
 
 # Без INIT_PROMPT — compliance остаётся optional (default = none, none не имеет on_value mapping)
-RESULT_NO=$(python3 -c "
+RESULT_NO=$(uv run --no-project --with 'pyyaml>=6.0,<7.0' python -c "
 import sys
 sys.path.insert(0, 'scripts')
 from _apply_profile import load_manifest, apply_on_value_mutations
@@ -712,6 +723,132 @@ RC=$?
 assert "T-W3-A1: init.sh с INIT_PROMPT_compliance_domain=152-fz exit 0" "[ \"$RC\" = '0' ]"
 cd "$REPO_ROOT"
 rm -rf "$TMP_W3A1"
+
+# ===== T-UV-PREREQ: uv enforcement tests =====
+echo ""
+echo "==> T-UV-PREREQ: uv enforcement"
+
+# T-UV-PREREQ-01: positive — init.sh with uv in PATH exits 0
+TMP_UV01=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV01/"
+cd "$TMP_UV01"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+bash scripts/init.sh --profile project "test" "TEST" "desc" "t@x.com" >/dev/null 2>&1
+RC_UV01=$?
+set -e
+assert "T-UV-PREREQ-01: init.sh с uv в PATH exit 0" "[ \"$RC_UV01\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV01"
+
+# T-UV-PREREQ-02: negative — init.sh without uv exits 1 + stderr contains "uv"
+TMP_UV02=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV02/"
+cd "$TMP_UV02"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+# Use /bin/bash explicitly so PATH=/nonexistent doesn't prevent bash from being found
+STDERR_UV02=$(PATH=/nonexistent /bin/bash scripts/init.sh 2>&1 1>/dev/null)
+RC_UV02=$?
+# Pre-compute grep result before assert to avoid eval expanding multi-line STDERR_UV02 with
+# special shell chars (e.g. "iex" in the PowerShell install hint causes eval to try running it).
+echo "$STDERR_UV02" | grep -q 'uv' && UV02_STDERR_MATCH=0 || UV02_STDERR_MATCH=1
+set -e
+assert "T-UV-PREREQ-02: PATH=/nonexistent → exit 1" "[ \"$RC_UV02\" = '1' ]"
+assert "T-UV-PREREQ-02: stderr содержит 'uv'" "[ \"$UV02_STDERR_MATCH\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV02"
+
+# T-UV-PREREQ-03: INIT_FORCE=1 does NOT bypass prereq-gate
+TMP_UV03=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV03/"
+cd "$TMP_UV03"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+INIT_FORCE=1 PATH=/nonexistent /bin/bash scripts/init.sh >/dev/null 2>&1
+RC_UV03=$?
+set -e
+assert "T-UV-PREREQ-03: INIT_FORCE=1 + no uv → exit 1 (prereq не обходится)" "[ \"$RC_UV03\" = '1' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV03"
+
+# T-UV-PREREQ-04: .git not wiped after prereq fail (destructive ops skipped)
+TMP_UV04=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV04/"
+cd "$TMP_UV04"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+PATH=/nonexistent /bin/bash scripts/init.sh >/dev/null 2>&1
+set -e
+assert "T-UV-PREREQ-04: .git существует после prereq fail (destructive ops не выполнились)" "[ -d .git ] && [ -n \"\$(ls -A .git 2>/dev/null)\" ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV04"
+
+# T-UV-PREREQ-05: uv run scripts/validate-content.py exits 0 (PyYAML via PEP 723)
+# NOTE: Tests that uv resolves PyYAML via PEP 723 headers (not global pip install).
+# Uses a minimal synthetic content/ (just _index.md) to avoid property-value errors
+# from SA/BA work-in-progress artifacts in the worktree (those are in scope of this
+# epic but not of this test — this test is about PEP 723 uv resolution, not content
+# validity per se).
+TMP_UV05=$(mktemp -d)
+mkdir -p "$TMP_UV05/scripts" "$TMP_UV05/content"
+cp "$REPO_ROOT/scripts/validate-content.py" "$TMP_UV05/scripts/"
+cp "$REPO_ROOT/scripts/_validate_common.py" "$TMP_UV05/scripts/"
+touch "$TMP_UV05/content/_index.md"
+cd "$TMP_UV05"
+set +e
+uv run scripts/validate-content.py >/dev/null 2>&1
+RC_UV05=$?
+set -e
+assert "T-UV-PREREQ-05: uv run scripts/validate-content.py exit 0 (PEP 723 resolve)" \
+  "[ \"$RC_UV05\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV05"
+
+# T-UV-PREREQ-06: exactly 6 .py files have # /// script (5 existing + _init_helpers.py)
+UV06_COUNT=$(grep -l '# /// script' "$REPO_ROOT/scripts"/*.py 2>/dev/null | wc -l | tr -d ' ')
+assert "T-UV-PREREQ-06: ровно 6 .py файлов содержат # /// script (5 + _init_helpers.py)" \
+  "[ \"$UV06_COUNT\" = '6' ]"
+
+# T-UV-PREREQ-07: no bare python3 calls in scripts/ and key doc files updated by this epic
+# Scope: scripts/ (executable), README.md, CLAUDE.md, docs/extending.md, docs/troubleshooting.md, AGENTS.md
+# (Historical docs/ archives not in scope per spec section E)
+# grep -rn output format: "filename:linenum:content"
+# Exclude: shebang lines, pure comment lines (#), docstring lines (indented python3 in """)
+# pipefail-safe: wrap filter chain in { ...; } with || true so grep -v exiting 1 (no match)
+# doesn't propagate through pipefail and kill the script.
+UV07_COUNT=$( { grep -rn 'python3 ' \
+    "$REPO_ROOT/scripts/" \
+    "$REPO_ROOT/README.md" \
+    "$REPO_ROOT/CLAUDE.md" \
+    "$REPO_ROOT/docs/extending.md" \
+    "$REPO_ROOT/docs/troubleshooting.md" \
+    "$REPO_ROOT/AGENTS.md" 2>/dev/null \
+  | grep -v '#!/usr/bin/env python3' \
+  | grep -v "$REPO_ROOT/scripts/test-template.sh:" \
+  | grep -vE ':[0-9]+:[[:space:]]*#' \
+  | grep -vE ':[0-9]+:[[:space:]]+(python3 scripts/)' || true; } | wc -l | tr -d ' ')
+assert "T-UV-PREREQ-07: 0 bare python3 вызовов в scripts/ и ключевых doc-файлах (per spec E)" \
+  "[ \"$UV07_COUNT\" = '0' ]"
+
+# T-UV-PREREQ-08: check.sh guard — PATH=/nonexistent exits 1
+set +e
+PATH=/nonexistent /bin/bash "$REPO_ROOT/scripts/check.sh" --fast >/dev/null 2>&1
+RC_UV08=$?
+set -e
+assert "T-UV-PREREQ-08: check.sh без uv → exit 1" "[ \"$RC_UV08\" = '1' ]"
+
+# T-UV-PREREQ-09: README has ## Prerequisites section
+assert "T-UV-PREREQ-09: README.md содержит ## Prerequisites" \
+  "grep -q '## Prerequisites' \"$REPO_ROOT/README.md\""
+
+# T-UV-PREREQ-10: _init_helpers.py exists and has # /// script
+assert "T-UV-PREREQ-10: scripts/_init_helpers.py существует и содержит # /// script" \
+  "[ -f \"$REPO_ROOT/scripts/_init_helpers.py\" ] && grep -q '# /// script' \"$REPO_ROOT/scripts/_init_helpers.py\""
 
 # ===== Summary =====
 echo ""

@@ -2,6 +2,34 @@
 
 Внутренний проект Naumen на основе шаблона `project_template`.
 
+## Prerequisites
+
+Шаблон требует **[uv](https://docs.astral.sh/uv/)** — менеджер Python-окружений.
+Python устанавливать отдельно не нужно: uv управляет Python-версией автоматически.
+
+**macOS (Homebrew — рекомендован):**
+```bash
+brew install uv
+```
+
+**macOS / Linux (curl-installer):**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows (WinGet):**
+```powershell
+winget install --id=astral-sh.uv -e
+```
+
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+> Первый запуск `uv run` на clean-machine занимает 5–15 сек (скачивает PyYAML).
+> Повторные запуски — мгновенные (warm cache `~/.cache/uv`).
+
 ## Быстрый старт
 
 1. **Открой клон в Claude Code** и выполни `/init` — slash-команда проведёт двухфазную инициализацию:
@@ -37,7 +65,7 @@
 - `bash scripts/init.sh` — interactive: меню профилей с описаниями, summary, confirm
 - `bash scripts/init.sh --profile <name> "Name" "CODE" "desc" "email" "git-url"` — non-interactive (CLI)
 - `INIT_FORCE=1 bash scripts/init.sh --profile <name> ...` — пропустить confirm prompt (CI)
-- `python3 scripts/validate-profile.py` — валидация manifest'ов профилей
+- `uv run scripts/validate-profile.py` — валидация manifest'ов профилей
 - `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций профиля
 - `bash scripts/check.sh --fast` — pre-commit gate (validate-content + validate-profile, ~3 сек)
 - `bash scripts/check.sh --full` — pre-merge gate (+ tests, ~30 сек)
@@ -84,10 +112,11 @@ Marketplaces и enabled-плагины описаны в `.claude/settings.json`
 Структуру каталога `content/` проверяет валидатор:
 
 ```bash
-python3 scripts/validate-content.py
+uv run scripts/validate-content.py
 ```
 
-Требует `pyyaml` (`pip install pyyaml`). Запускается автоматически в `bash scripts/test-template.sh` и в slash-команде `/pm-review`.
+Запускается автоматически в `bash scripts/test-template.sh` и в slash-команде `/pm-review`.
+PyYAML разрешается автоматически через uv (PEP 723) — ручной `pip install` не нужен.
 
 ### Setup pre-commit hooks (опционально)
 

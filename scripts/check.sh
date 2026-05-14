@@ -9,6 +9,12 @@
 
 set -euo pipefail
 
+# uv-guard: обязательная зависимость
+if ! command -v uv >/dev/null 2>&1; then
+  echo "ERROR: 'uv' не найден в PATH. Установите: https://docs.astral.sh/uv/getting-started/installation/" >&2
+  exit 1
+fi
+
 MODE="${1:---fast}"
 
 case "$MODE" in
@@ -53,8 +59,8 @@ run_check() {
   fi
 }
 
-run_check "validate-content.py" "python3 scripts/validate-content.py"
-run_check "validate-profile.py" "python3 scripts/validate-profile.py"
+run_check "validate-content.py" "uv run scripts/validate-content.py"
+run_check "validate-profile.py" "uv run scripts/validate-profile.py"
 
 if [[ "$MODE" == "--full" ]]; then
   run_check "test-validate-content.sh" "bash scripts/test-validate-content.sh"

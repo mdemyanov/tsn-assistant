@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pyyaml>=6.0,<7.0",
+# ]
+# ///
 """_apply_profile.py — читает profile manifest.yaml, эмиттит JSON ops plan на stdout.
 
 Используется apply-overlay.sh в --profile режиме как one-shot helper

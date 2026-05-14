@@ -22,7 +22,7 @@
 
 5. Если роль будет в каком-то профиле — добавить в `subagents:` в `docs/overlays/profiles/<profile>/manifest.yaml` со статусом `core`/`optional`/`disabled`.
 
-6. Прогнать `python3 scripts/validate-profile.py` — должно быть 0 errors (M4 проверит что роль объявлена в AGENTS.md).
+6. Прогнать `uv run scripts/validate-profile.py` — должно быть 0 errors (M4 проверит что роль объявлена в AGENTS.md).
 
 ## Как добавить новый pipeline
 
@@ -34,7 +34,7 @@
 
 3. Добавить в profile manifest'ы где relevant: `pipelines.<name>: enabled` или `optional` или `disabled`.
 
-4. Прогнать `python3 scripts/validate-profile.py` — M5 проверит что файл pipeline'а существует.
+4. Прогнать `uv run scripts/validate-profile.py` — M5 проверит что файл pipeline'а существует.
 
 ## Как добавить новый профиль
 
@@ -73,7 +73,7 @@
          a: { subagents.<role>: core }  # мутации manifest in-memory
    ```
 
-5. Прогнать `python3 scripts/validate-profile.py docs/overlays/profiles/<name>` — exit 0.
+5. Прогнать `uv run scripts/validate-profile.py docs/overlays/profiles/<name>` — exit 0.
 
 6. Тест: `bash scripts/apply-overlay.sh --profile --dry-run <name>` — preview операций.
 
@@ -93,8 +93,8 @@
 
 ## Чеклист контроля
 
-- [ ] `python3 scripts/validate-content.py` exit 0
-- [ ] `python3 scripts/validate-profile.py` exit 0
+- [ ] `uv run scripts/validate-content.py` exit 0
+- [ ] `uv run scripts/validate-profile.py` exit 0
 - [ ] `bash scripts/test-validate-content.sh` PASS
 - [ ] `bash scripts/test-validate-profile.sh` PASS
 - [ ] `bash scripts/test-template.sh` PASS

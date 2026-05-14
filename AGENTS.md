@@ -80,6 +80,16 @@ Researcher (опц.) → BA → SA → QA-author → Dev → QA-runner → BA-ac
 
 PM координирует на каждом этапе: приоритизирует, разрешает блокеры, запускает `/pm-review` перед merge в `public`.
 
+### Правило two-way sync
+
+При расхождении нижестоящего слоя с вышестоящим — сначала обновляется вышестоящий слой
+(требования, архитектура, принципы, роли), затем нижестоящий (реализация, runbook, playbook).
+Детали и таблица пар для каждого профиля — в `CLAUDE.md` раздел «Правило two-way sync».
+
+- Drift-check запускается автоматически в `/pm-review` через `scripts/_drift_check.py`
+- Bypass для hotfix: `skip-drift: hotfix — <описание>` в commit message (trailer)
+- Расхождение без bypass — soft-fail (WARN), требует подтверждения PM перед merge
+
 DevSecOps активируется в Dev-фазе при flag'е (профиль или явный запрос); Compliance — research-mode по запросу.
 
 Ветвление: `private` — рабочая ветка; `public` — публикация в Gramax после ревью PM.

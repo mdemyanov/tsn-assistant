@@ -713,6 +713,116 @@ assert "T-W3-A1: init.sh с INIT_PROMPT_compliance_domain=152-fz exit 0" "[ \"$R
 cd "$REPO_ROOT"
 rm -rf "$TMP_W3A1"
 
+# ===== T-UV-PREREQ: uv enforcement tests =====
+echo ""
+echo "==> T-UV-PREREQ: uv enforcement"
+
+# T-UV-PREREQ-01: positive — init.sh with uv in PATH exits 0
+TMP_UV01=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV01/"
+cd "$TMP_UV01"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+bash scripts/init.sh --profile project "test" "TEST" "desc" "t@x.com" >/dev/null 2>&1
+RC_UV01=$?
+set -e
+assert "T-UV-PREREQ-01: init.sh с uv в PATH exit 0" "[ \"$RC_UV01\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV01"
+
+# T-UV-PREREQ-02: negative — init.sh without uv exits 1 + stderr contains "uv"
+TMP_UV02=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV02/"
+cd "$TMP_UV02"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+STDERR_UV02=$(PATH=/nonexistent bash scripts/init.sh 2>&1 1>/dev/null)
+RC_UV02=$?
+set -e
+assert "T-UV-PREREQ-02: PATH=/nonexistent → exit 1" "[ \"$RC_UV02\" = '1' ]"
+assert "T-UV-PREREQ-02: stderr содержит 'uv'" "echo \"$STDERR_UV02\" | grep -q 'uv'"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV02"
+
+# T-UV-PREREQ-03: INIT_FORCE=1 does NOT bypass prereq-gate
+TMP_UV03=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV03/"
+cd "$TMP_UV03"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+INIT_FORCE=1 PATH=/nonexistent bash scripts/init.sh >/dev/null 2>&1
+RC_UV03=$?
+set -e
+assert "T-UV-PREREQ-03: INIT_FORCE=1 + no uv → exit 1 (prereq не обходится)" "[ \"$RC_UV03\" = '1' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV03"
+
+# T-UV-PREREQ-04: .git not wiped after prereq fail (destructive ops skipped)
+TMP_UV04=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV04/"
+cd "$TMP_UV04"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+set +e
+PATH=/nonexistent bash scripts/init.sh >/dev/null 2>&1
+set -e
+assert "T-UV-PREREQ-04: .git существует после prereq fail (destructive ops не выполнились)" "[ -d .git ] && [ -n \"\$(ls -A .git 2>/dev/null)\" ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV04"
+
+# T-UV-PREREQ-05: uv run scripts/validate-content.py exits 0 (PyYAML via PEP 723)
+# NOTE: Tests that uv resolves PyYAML via PEP 723 headers (not global pip install).
+# Runs in a fresh project copy after init so content/ is valid (no content errors unrelated to PEP 723).
+TMP_UV05=$(mktemp -d)
+rsync -a --exclude='.git' --exclude='.worktrees' "$REPO_ROOT/" "$TMP_UV05/"
+cd "$TMP_UV05"
+git init -q -b main
+git -c user.email=t@x -c user.name=t commit --allow-empty -q -m baseline
+bash scripts/init.sh --profile project "test05" "T05" "desc" "t@x.com" >/dev/null 2>&1 || true
+set +e
+uv run scripts/validate-content.py >/dev/null 2>&1
+RC_UV05=$?
+set -e
+assert "T-UV-PREREQ-05: uv run scripts/validate-content.py exit 0 (PEP 723 resolve)" \
+  "[ \"$RC_UV05\" = '0' ]"
+cd "$REPO_ROOT"
+rm -rf "$TMP_UV05"
+
+# T-UV-PREREQ-06: exactly 6 .py files have # /// script (5 existing + _init_helpers.py)
+UV06_COUNT=$(grep -l '# /// script' "$REPO_ROOT/scripts"/*.py 2>/dev/null | wc -l | tr -d ' ')
+assert "T-UV-PREREQ-06: ровно 6 .py файлов содержат # /// script (5 + _init_helpers.py)" \
+  "[ \"$UV06_COUNT\" = '6' ]"
+
+# T-UV-PREREQ-07: no bare python3 calls (excluding shebang lines and comments)
+# Pattern: 'python3 ' in scripts/, README.md, CLAUDE.md, docs/
+# grep -rn output format: "filename:linenum:content"
+# Exclude shebang lines (content contains #!/usr/bin/env python3)
+# Exclude comment lines (content after "linenum:" starts with optional spaces then #)
+UV07_COUNT=$(grep -rn 'python3 ' "$REPO_ROOT/scripts/" "$REPO_ROOT/README.md" "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/docs/" 2>/dev/null \
+  | grep -v '#!/usr/bin/env python3' \
+  | grep -vE ':[0-9]+:[[:space:]]*#' \
+  | wc -l | tr -d ' ')
+assert "T-UV-PREREQ-07: 0 bare python3 вызовов (вне shebang и комментариев)" \
+  "[ \"$UV07_COUNT\" = '0' ]"
+
+# T-UV-PREREQ-08: check.sh guard — PATH=/nonexistent exits 1
+set +e
+PATH=/nonexistent bash "$REPO_ROOT/scripts/check.sh" --fast >/dev/null 2>&1
+RC_UV08=$?
+set -e
+assert "T-UV-PREREQ-08: check.sh без uv → exit 1" "[ \"$RC_UV08\" = '1' ]"
+
+# T-UV-PREREQ-09: README has ## Prerequisites section
+assert "T-UV-PREREQ-09: README.md содержит ## Prerequisites" \
+  "grep -q '## Prerequisites' \"$REPO_ROOT/README.md\""
+
+# T-UV-PREREQ-10: _init_helpers.py exists and has # /// script
+assert "T-UV-PREREQ-10: scripts/_init_helpers.py существует и содержит # /// script" \
+  "[ -f \"$REPO_ROOT/scripts/_init_helpers.py\" ] && grep -q '# /// script' \"$REPO_ROOT/scripts/_init_helpers.py\""
+
 # ===== Summary =====
 echo ""
 echo "==> Results: $PASS passed, $FAIL failed"

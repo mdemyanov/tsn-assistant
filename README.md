@@ -92,6 +92,12 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 - **Разработчики:** получают артефакт SA через `/sa design <фича>`, реализуют через `/dev implement <фича>` (TDD), документируют runbook через `/devops runbook <процедура>`.
 - **Все:** для текстов — `infoinstyle`; для многошаговых задач — `superpowers:brainstorming`.
 
+## Принципы работы с документацией
+
+Шаблон следует правилу two-way sync: при расхождении слоёв проекта сначала обновляется
+вышестоящий слой (требования, архитектура), затем нижестоящий (реализация, runbook, assessment).
+Подробнее — раздел «Правило two-way sync» в `CLAUDE.md`.
+
 ## Ветвление
 
 - `private` — рабочая ветка, все правки.

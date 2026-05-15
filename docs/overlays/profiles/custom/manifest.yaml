@@ -34,5 +34,7 @@ agent_overrides: {}
 
 init_prompts: []
 
+drift_pairs: []
+
 compatible_stacks: ["*"]
 maintainer: project_template

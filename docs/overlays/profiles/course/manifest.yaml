@@ -37,5 +37,13 @@ agent_overrides:
 
 init_prompts: []
 
+drift_pairs:
+  - upstream: content/*-module-*/
+    downstream: content/90-assessments/
+    note: "Модули → assessments (glob охватывает все каталоги с -module- в имени)"
+  - upstream: content/00-overview/
+    downstream: content/*-module-*/
+    note: "Обзор курса → модули"
+
 compatible_stacks: []
 maintainer: project_template

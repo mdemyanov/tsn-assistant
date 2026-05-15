@@ -1,3 +1,4 @@
+profile: kb-product
 title: "{{PROJECT_NAME}} — Документация"
 properties:
   - name: Тип контента

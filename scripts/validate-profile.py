@@ -463,6 +463,68 @@ def check_m11_overrides(profile_dir: Path, manifest: dict, repo_root: Path) -> l
     return issues
 
 
+def check_drift_pairs_schema(profile_dir: Path, manifest: dict) -> list[Issue]:
+    """Validates drift_pairs field schema (optional — absence is OK, backward-compat).
+
+    If present:
+    - Must be a list
+    - Each item must be a dict with 'upstream' (str, len>=1) and 'downstream' (str, len>=1)
+    - Optional 'note' (str)
+    - No extra keys allowed
+    """
+    if "drift_pairs" not in manifest:
+        return []  # optioanl field — absence is OK
+    dp = manifest["drift_pairs"]
+    if dp is None:
+        return []  # YAML null treated same as absent
+    manifest_path = str(profile_dir / "manifest.yaml")
+    if not isinstance(dp, list):
+        return [Issue(
+            level="error",
+            path=manifest_path,
+            message=f"drift_pairs: должен быть списком (list), получено {type(dp).__name__}",
+        )]
+    issues = []
+    allowed_keys = {"upstream", "downstream", "note"}
+    for i, pair in enumerate(dp):
+        if not isinstance(pair, dict):
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=f"drift_pairs[{i}]: должен быть dict, получено {type(pair).__name__}",
+            ))
+            continue
+        for required_key in ("upstream", "downstream"):
+            val = pair.get(required_key)
+            if val is None:
+                issues.append(Issue(
+                    level="error",
+                    path=manifest_path,
+                    message=f"drift_pairs[{i}]: отсутствует обязательный ключ '{required_key}'",
+                ))
+            elif not isinstance(val, str) or len(val) < 1:
+                issues.append(Issue(
+                    level="error",
+                    path=manifest_path,
+                    message=f"drift_pairs[{i}].{required_key}: должен быть непустой строкой",
+                ))
+        extra_keys = set(pair.keys()) - allowed_keys
+        if extra_keys:
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=f"drift_pairs[{i}]: недопустимые ключи {sorted(extra_keys)} (разрешены: upstream, downstream, note)",
+            ))
+        note = pair.get("note")
+        if note is not None and not isinstance(note, str):
+            issues.append(Issue(
+                level="error",
+                path=manifest_path,
+                message=f"drift_pairs[{i}].note: должен быть строкой, получено {type(note).__name__}",
+            ))
+    return issues
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate profile manifests")
     parser.add_argument(
@@ -516,6 +578,7 @@ def main(argv: list[str]) -> int:
         issues.extend(check_m9_compatible_stacks(pd, manifest, repo_root))
         issues.extend(check_m10_status_mismatch(pd, manifest))
         issues.extend(check_m11_overrides(pd, manifest, repo_root))
+        issues.extend(check_drift_pairs_schema(pd, manifest))
 
     if issues:
         print(format_issues(issues))

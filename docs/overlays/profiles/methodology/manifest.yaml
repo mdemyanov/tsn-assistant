@@ -37,5 +37,16 @@ agent_overrides:
 
 init_prompts: []
 
+drift_pairs:
+  - upstream: content/10-principles/
+    downstream: content/20-practices/
+    note: "Принципы → практики"
+  - upstream: content/20-practices/
+    downstream: content/30-playbooks/
+    note: "Практики → playbook'и"
+  - upstream: content/30-playbooks/
+    downstream: content/40-templates/
+    note: "Playbook'и → шаблоны"
+
 compatible_stacks: []
 maintainer: project_template

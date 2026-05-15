@@ -49,5 +49,19 @@ init_prompts:
       other:
         subagents.compliance: core
 
+drift_pairs:
+  - upstream: content/30-requirements/
+    downstream: src/
+    note: "Требования → реализация (code-проекты)"
+  - upstream: content/40-architecture/
+    downstream: src/
+    note: "Архитектура → реализация (code-проекты)"
+  - upstream: content/30-requirements/
+    downstream: content/60-implementation/
+    note: "Требования → документация реализации"
+  - upstream: content/40-architecture/
+    downstream: content/70-operations/
+    note: "Архитектура → операционная документация"
+
 compatible_stacks: [naumen-smp]
 maintainer: project_template

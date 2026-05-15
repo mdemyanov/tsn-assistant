@@ -129,6 +129,31 @@ PM (main, Opus) + 9 subagent'ов (Sonnet): researcher, ba, sa, dev, devops, qa 
 
 Ветвление: `private` — рабочая ветка, все правки. `public` — публикация в Gramax после ревью PM.
 
+## Правило two-way sync
+
+При расхождении любого нижестоящего слоя проекта с вышестоящим — сначала обновляется
+вышестоящий слой (требование, архитектура, принципы, роли), затем нижестоящий
+(реализация, runbook, playbook, assessment). Расхождение без предшествующего обновления
+вышестоящего слоя — блокер для /pm-review.
+
+**Единственное исключение — hotfix на production:** нижестоящий слой фиксируется немедленно.
+Вышестоящий обновляется в post-mortem сразу после фикса, не позднее следующего рабочего
+цикла. В commit message обязателен trailer `skip-drift: hotfix — <описание>`.
+
+Конкретные пары upstream→downstream для профиля проекта — в `drift_pairs` manifest профиля
+(`docs/overlays/profiles/<name>/manifest.yaml`). Проекты без поля `drift_pairs` получают
+INFO-skip (backward-compat: не ошибка).
+
+| Профиль | Примеры пар upstream → downstream |
+|---------|-----------------------------------|
+| `project` | `content/30-requirements/` → `src/`; `content/40-architecture/` → `content/70-operations/` |
+| `product` | `content/10-vision/` → `content/30-specs/`; `content/30-specs/` → `content/40-architecture/` |
+| `kb-team` | `content/10-domain/` → `content/40-roles/`; `content/40-roles/` → `content/30-runbooks/` |
+| `kb-product` | `content/reference/` → `content/guides/`; `content/guides/` → `content/troubleshooting/` |
+| `methodology` | `content/10-principles/` → `content/20-practices/`; `content/20-practices/` → `content/30-playbooks/` |
+| `course` | `content/00-overview/` → `content/*-module-*/`; `content/*-module-*/` → `content/90-assessments/` |
+| `custom` | Определяется на `/init` (поле `drift_pairs` в manifest) |
+
 ## Когда какой скилл звать
 
 | Ситуация | Скилл |
@@ -143,6 +168,8 @@ PM (main, Opus) + 9 subagent'ов (Sonnet): researcher, ba, sa, dev, devops, qa 
 
 ## Красные линии (универсальные)
 
+- Расхождение нижестоящего слоя с вышестоящим без предшествующего обновления вышестоящего
+  (или без bypass-trailer `skip-drift: <reason>`) — блокер для /pm-review
 - НЕ публиковать секреты (`.env`, токены, API-ключи, credentials)
 - НЕ включать PII (реальные имена, контакты, персональные данные сотрудников/клиентов)
 - НЕ менять `.doc-root.yaml` и `.gramax/` без согласования (через SA + ADR)

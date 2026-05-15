@@ -1,3 +1,4 @@
+profile: product
 title: "{{PROJECT_NAME}} — Product Docs"
 description: {{PROJECT_DESCRIPTION}}
 syntax: XML

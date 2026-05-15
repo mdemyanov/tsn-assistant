@@ -219,6 +219,40 @@ EOF
 - ❌ Применить всё одним коммитом без gate — если что-то сломается, bisect станет адом.
 - ❌ Коммитить `.template-basis` ДО зелёного gate — basis должен означать «работающее состояние».
 
+## SPDD drift_pairs — миграция для pre-SPDD проектов
+
+Если твой проект был инициализирован до SPDD-интеграции (до Wave SPDD), в `docs/overlays/profiles/*/manifest.yaml` нет поля `drift_pairs`, а в `content/.doc-root.yaml` нет `profile:`. `/pm-review` корректно пропустит drift-check с `[INFO]` — backward-compat гарантирован.
+
+Чтобы включить drift-check — добавь два поля:
+
+**1. Добавь `profile: <name>` в `content/.doc-root.yaml` проекта:**
+
+```yaml
+profile: project   # или kb-team / product / etc.
+title: "Мой проект"
+# ... остальные поля без изменений
+```
+
+**2. Убедись, что `drift_pairs` есть в manifest профиля:**
+
+Если ты применял overlay через `bash scripts/apply-overlay.sh`, поле уже должно быть скопировано из `docs/overlays/profiles/<name>/manifest.yaml`. Если нет — скопируй его вручную из шаблона:
+
+```bash
+# Пример для профиля project
+grep -A 20 "drift_pairs:" docs/overlays/profiles/project/manifest.yaml
+```
+
+Добавь полученный блок в `docs/overlays/profiles/<name>/manifest.yaml` своего проекта.
+
+**3. Проверь:**
+
+```bash
+uv run scripts/validate-profile.py        # должен быть 0 errors
+bash scripts/_drift_check.py --help       # smoke-test
+```
+
+Проекты с `custom`-профилем получают `drift_pairs: []` по умолчанию — drift-check молча пропускается, пока вы не заполните пары вручную.
+
 ## Что обновлять не нужно
 
 - `content/` — это контент проекта, шаблон его не диктует.

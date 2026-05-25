@@ -1,0 +1,58 @@
+code: {{TSN_CODE}}
+title: {{TSN_NAME}}
+description: {{TSN_DESCRIPTION}}
+style: blue-green
+language: ru
+supportedLanguages:
+  - ru
+syntax: XML
+
+properties:
+  - name: Тип документа
+    type: Enum
+    style: blue
+    icon: file-text
+    values:
+      - Протокол
+      - Решение
+      - Договор
+      - Претензия
+      - Анализ
+      - Отчёт
+      - Шаблон
+      - Реестр
+      - Заметка
+      - Тех. документация
+      - Обращение
+      - Объявление
+      - Insight
+
+  - name: Категория
+    type: Enum
+    style: green
+    icon: layers
+    values:
+      - Объект
+      - Собственники
+      - Правление
+      - Общее собрание
+      - Финансы
+      - Договоры
+      - Юридическое
+      - Проекты
+
+  - name: Статус
+    type: Enum
+    style: orange
+    icon: check-circle
+    values:
+      - Черновик
+      - В работе
+      - Действует
+      - Завершён
+      - Архив
+
+filterProperties: [Тип документа, Категория, Статус]
+
+editors:
+  - {{EDITOR_EMAIL}}

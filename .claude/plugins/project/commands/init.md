@@ -1,158 +1,106 @@
 ---
-description: "Двухфазная инициализация проекта из шаблона. Фаза 1: bash-скрипт (плейсхолдеры, wipe .git, initial commit с трассировкой, опционально origin). Фаза 2: интервью по 6 темам с TODO-маркерами на пропусках. Пример: /init my-project"
+description: "Инициализация ТСН (МКД/СНТ/ОНТ/ЖСК) из шаблона. Phase 1 — bash (плейсхолдеры, wipe .git, MCP install). Phase 2 — интервью по 8 темам с TODO-маркерами на пропусках. Пример: /init Лайф-2"
 allowed-tools: Read, Edit, Write, Bash(git:*), Bash(bash scripts/init.sh:*), Bash(ls:*), Bash(grep:*)
 ---
 
-Ты выполняешь первичную инициализацию проекта, созданного из шаблона `project_template`. Работа делится на две фазы: bash-механика (`scripts/init.sh`) и интервью с правками content'а.
+Ты выполняешь первичную инициализацию ТСН из шаблона `tsn-assistant`. Работа делится на две фазы.
 
-## Твоя задача
+## Задача
 
 Пользователь передал: `$ARGUMENTS`
 
-Цель — превратить «шаблон» в готовый рабочий проект:
-1. Заполнить плейсхолдеры (`{{PROJECT_NAME}}`, `{{PROJECT_CODE}}`, `{{PROJECT_DESCRIPTION}}`, `{{EDITOR_EMAIL}}`).
-2. Wipe `.git`, initial commit с трассировкой (`Template: <url>@<sha>`).
-3. Опционально установить новый `origin` (URL ≠ репозиторий шаблона).
-4. Заполнить или явно отметить TODO-маркерами project-specific секции в `CLAUDE.md`.
+Цель — превратить шаблон в работающий vault конкретного товарищества:
+1. Заполнить плейсхолдеры (`{{TSN_NAME}}`, `{{TSN_CODE}}`, `{{TSN_DESCRIPTION}}`, `{{TSN_ADDRESS}}`, `{{CHAIR_NAME}}`, `{{EDITOR_EMAIL}}`)
+2. Wipe `.git`, initial commit с трассировкой
+3. Опционально установить новый origin
+4. Заполнить или явно отметить TODO-маркерами project-specific данные
 
 ## Алгоритм
 
 ### Шаг 0. Идемпотентность
 
-1. Прочитай `CLAUDE.md`. Если там нет ни `{{PROJECT_NAME}}`, ни `TODO(/init)` — проект уже полностью инициализирован. Сообщи и выйди.
-2. Если есть `{{PROJECT_NAME}}` → переходи к **Фазе 1**.
-3. Если плейсхолдеров уже нет, но есть `<!-- TODO(/init): ... -->` → пропусти Фазу 1, переходи сразу к **Фазе 2** (дозаполнение).
+Прочитай `CLAUDE.md`. Если нет ни `{{TSN_NAME}}`, ни `TODO(/init)` — проект полностью инициализирован, сообщи и выйди.
 
-### Шаг 0.5. Подтверждение wipe (только если идём в Фазу 1)
+Если есть `{{TSN_NAME}}` → Фаза 1. Если плейсхолдеры заменены, но есть `<!-- TODO(/init): ... -->` → Фаза 2.
 
-Покажи пользователю текущую историю git:
+### Шаг 0.5. Подтверждение wipe
+
+Покажи историю:
 
 ```bash
 git log --oneline -10
 ```
 
-Затем явно спроси в чате (это сообщение, а не bash-prompt):
-
+Спроси:
 > «Это история шаблона. После init она будет удалена (wipe `.git` + initial commit с трассировкой). Продолжить? (yes/no)»
 
-Жди подтверждения. На отрицательный ответ или невнятный — остановись и предложи сначала сделать `git clone` шаблона второй копией как backup.
+На отрицательный — остановись, предложи backup.
 
-### Шаг 0.7. Выбор профиля (Wave 2)
-
-Шаблон поддерживает несколько профилей (тип проекта). Профиль определяет:
-- структуру `content/` (scaffold)
-- набор properties в `.doc-root.yaml`
-- активные subagents (core / optional / disabled) и pipelines
-
-Покажи доступные профили:
-
-```bash
-ls docs/overlays/profiles/ | grep -v '^\.gitkeep$'
-```
-
-Спроси у пользователя: «Выбери профиль (default: `project`):»
-
-| Профиль | Назначение | Status |
-|---------|------------|--------|
-| `project` | Delivery-проект (default) — Researcher → BA → SA → Dev → DevOps цепочка | stable |
-| `kb-team` | Internal team KB (onboarding/runbook/role/incident) | stable |
-| `product` | Разработка продукта/модуля | stub (Wave 3+) |
-| `kb-product` | Документация продукта для клиентов | stub |
-| `methodology` | Методология / playbook | stub |
-| `course` | Обучающий курс | stub |
-| `custom` | Open-ended (research-каталог, личный wiki) | stub |
-
-Если пользователь выбрал stub-профиль — предупреди, что scaffold ещё не готов; предложи alternative (`project` для большинства случаев) или продолжить с stub'ом (тогда content/ будет минимальным после init).
-
-Сохрани выбор в переменную `$PROFILE`.
-
-### Фаза 1. Запуск механики
+### Фаза 1. Bash-механика
 
 1. **Собери параметры** (если не переданы в `$ARGUMENTS`, спроси по очереди):
-   - `PROJECT_NAME` — человекочитаемое имя проекта (например, `SD AI Assistant`)
-   - `PROJECT_CODE` — код каталога Gramax, UPPERCASE, без пробелов (например, `SD-AI-ASSISTANT`)
-   - `PROJECT_DESCRIPTION` — короткое описание для шапки Gramax-каталога
-   - `EDITOR_EMAIL` — email редактора Gramax (минимум один; добавить остальных можно потом руками)
-   - `GIT_REMOTE_URL` — URL нового origin. **Не должен** содержать `project-template` / `project_template`. Если у пользователя ещё нет URL — оставь пустым (init.sh пропустит origin и предупредит).
+   - `TSN_NAME` — название ("ТСН Лайф 2", "СНТ Заря")
+   - `TSN_CODE` — код Gramax (UPPERCASE, без пробелов; например "TSN-LIFE-2", "SNT-ZARYA")
+   - `TSN_DESCRIPTION` — короткое описание для шапки Gramax
+   - `TSN_ADDRESS` — полный адрес ("Москва, ул. Чистова д.16 к.2", "Московская обл., Раменский р-н, СНТ Заря")
+   - `CHAIR_NAME` — ФИО председателя/и.о. ("Иванов Иван Иванович")
+   - `EDITOR_EMAIL` — email редактора Gramax
+   - `GIT_REMOTE_URL` — URL нового origin. **Не должен** содержать `tsn-assistant`/`project-template`. Если нет URL — пусто.
 
-2. **Запусти `scripts/init.sh`** (после T40 поддерживает `--profile`):
-   ```bash
-   bash scripts/init.sh --profile "$PROFILE" "$PROJECT_NAME" "$PROJECT_CODE" "$PROJECT_DESCRIPTION" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
-   ```
-   Скрипт:
-   - читает `docs/overlays/profiles/$PROFILE/manifest.yaml`
-   - подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`
-   - **спрашивает значения для `init_prompts:` манифеста** (если есть). Например, для `project` спрашивает «Проект под compliance-надзором?» — ответ применяется как mutation к manifest in-memory (например `subagents.compliance: optional → core` для `152-fz`). На non-interactive (без TTY) или с `INIT_SKIP_PROMPTS=1` используется `default`.
-   - вызовет `apply-overlay.sh --profile --init <profile>` для применения операций (add/replace/delete) — helper читает `INIT_PROMPT_<id>` env vars и применяет on_value мутации перед эмитом ops plan
-   - опц. предложит применить совместимые stack-overlay'и (`compatible_stacks` из manifest'а)
-   - wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`
-   - создаст ветку `private`
-   - опционально `git remote add origin <url>`
-   - скопирует `.env.example` → `.env`
-   - **зарегистрирует MCP-сервер `open-websearch`** (user-scope, `claude mcp add -s user`) — поисковик по умолчанию для researcher-agent (DuckDuckGo, разрешены DDG/Bing/Exa). Идемпотентен (skip если уже зарегистрирован); если CLI `claude` отсутствует — печатает ручную команду и не валит init. Bypass: `INIT_SKIP_MCP=1`.
+2. **Запусти `scripts/init.sh`:**
 
-3. **Верифицируй:**
-   - `grep -RE '{{(PROJECT_(NAME|CODE|DESCRIPTION)|EDITOR_EMAIL)}}' CLAUDE.md AGENTS.md README.md content/.doc-root.yaml` — пусто.
-   - `git log --oneline -1` — один initial commit, в сообщении есть `Template: `.
-   - `git remote -v` — либо origin задан, либо пусто.
-   - `git branch -a` — есть `main` и `private`.
-   - `python3 scripts/validate-content.py` — exit 0 (warnings допустимы; errors — блокер).
-   - `python3 scripts/validate-profile.py` — exit 0 (warnings допустимы; M5 errors про pipelines резолвятся после T39)
-   - `[ -f docs/overlays/profiles/$PROFILE/manifest.yaml ]` — true
-   - Профиль-специфичный scaffold применён (для `kb-team` это `content/30-runbooks/`; для `project` — `content/00-project/plans/`)
-   - `claude mcp list 2>/dev/null | grep -q '^open-websearch:'` — true (или предупреждение init.sh про отсутствие CLI `claude` / `INIT_SKIP_MCP=1`)
+```bash
+bash scripts/init.sh "$TSN_NAME" "$TSN_CODE" "$TSN_DESCRIPTION" "$TSN_ADDRESS" "$CHAIR_NAME" "$EDITOR_EMAIL" "$GIT_REMOTE_URL"
+```
 
-### Фаза 2. Интервью по 6 темам
+Скрипт:
+- Подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`, `content/_index.md`, `content/01-property/passport.md`, `content/03-board/actors.md`
+- Wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`, ветка `private`
+- Скопирует `.env.example` → `.env`
+- Зарегистрирует MCP-сервер `open-websearch` (user-scope, идемпотентно)
 
-Задавай вопросы **по одному**. Multiple-choice предпочтительнее. На каждый ответ — сразу `Edit` соответствующего блока в `CLAUDE.md`. На skip («не знаю / позже / пропустить») — оставь TODO-маркер как есть.
+3. **Верифицируй (после init.sh):**
+   - `grep -RE '{{TSN_(NAME|CODE|DESCRIPTION|ADDRESS)}}|{{CHAIR_NAME}}|{{EDITOR_EMAIL}}' CLAUDE.md AGENTS.md README.md content/` — пусто
+   - `git log --oneline -1` — initial commit с `Template:`
+   - `git branch -a` — `main` + `private`
+   - `uv run scripts/validate-content.py` — exit 0
+   - `claude mcp list 2>/dev/null | grep -q '^open-websearch:'` — true (или warning)
 
-| # | Тема | Вопрос (пример) | Куда пишем |
-|---|------|-----------------|------------|
-| 1 | Стек и язык | «Стек: [a] Python [b] Groovy/Maven [c] TypeScript/Node [d] KB-only без кода [e] другое» | `## Стек` |
-| 2 | Команды сборки и тестов | «Команды сборки/тестов? Например: `mvn test`, `pytest`, `npm test`. Если KB-only — `skip`.» | `## Команды сборки и проверки` |
-| 3 | Архитектурные правила | «Архитектурный стиль: [a] hexagonal/ports-adapters [b] layered/N-tier [c] нет правил [d] KB-only» | `## Архитектурные правила` |
-| 4 | Domain / тематика | «Опиши проект одним абзацем: что это, кому помогает, какую проблему решает.» | `## Контекст проекта` |
-| 5 | Project-specific red-lines | «Какие правила безопасности/процесса критичны именно для этого проекта поверх универсальных?» | `### Project-specific` под `## Красные линии` |
-| 6 | Ссылки | «URL платформенной документации, гайдов, API-доков (можно несколько; Enter — пропустить).» | `## Справочные пути` (заменить TODO-маркер) |
+### Фаза 2. Интервью
 
-После каждого ответа:
-- Содержательный ответ → `Edit`-tool заменяет конкретный `<!-- TODO(/init): ... -->` на блок (markdown с заголовком если нужно).
-- Skip → ничего не меняешь, маркер остаётся для последующего grep.
+По одному вопросу. На каждый ответ — `Edit` соответствующего блока/файла. На skip — TODO-маркер остаётся.
 
-### Шаг 6.5 (опц.): Адаптация properties в .doc-root.yaml
+| # | Тема | Вопрос | Куда пишем |
+|---|------|--------|------------|
+| 1 | Тип организации | "Тип товарищества: [a] МКД (ТСЖ/ЖСК) [b] СНТ [c] ОНТ [d] другое" | `CLAUDE.md` (контекст), `content/01-property/passport.md` |
+| 2 | Регион | "Регион/субъект РФ (важно для НПА): Москва / СПб / Московская обл. / другой" | `CLAUDE.md`, `content/09-contacts/authorities.md` |
+| 3 | Объект | "Сколько объектов: МКД — кол-во квартир + коммерческих; СНТ — кол-во участков" | `content/01-property/passport.md`, `content/01-property/premises/` |
+| 4 | Площадь | "Общая площадь (м² для МКД; га для СНТ)" | `content/01-property/passport.md` |
+| 5 | Год создания | "Год постройки дома / год образования товарищества" | `content/01-property/passport.md` |
+| 6 | Состав правления | "Перечисли членов правления (ФИО + роль + контакт). Можно по одному." | `content/03-board/actors.md` |
+| 7 | Подрядчики | "Ключевые обслуживающие организации (МКД: УК, РСО; СНТ: вывоз мусора, охрана, эл.сети). Опц." | `content/06-contracts/registry.md` |
+| 8 | Особенности | "Кратко: специфика товарищества (споры, крупные проекты, особенности). Опц." | `CLAUDE.md` (Project-specific) |
 
-Спроси: «Хочешь адаптировать `properties` (Тип контента / Фаза / Статус) под специфику проекта (добавить «Сценарий», «Интеграция» и т.п.)?»
-
-- «Нет» → оставь дефолт.
-- «Да» → спроси, какие значения добавить/заменить, обнови соответствующие блоки и `filterProperties` синхронно.
-- Skip → вставь `<!-- TODO(/init): адаптировать properties -->` в начало `content/.doc-root.yaml`.
-
-Референс по адаптации (production-эталон): `/Users/mdemyanov/Devel/naumen-ecosystem/business-requirements/.doc-root.yaml`. Старый каталог `sd-ai-assistant` — НЕ использовать как референс схемы (легаси, плоская frontmatter-нотация).
+После всех ответов — спроси, нужен ли commit правок Phase 2 (по умолчанию — нет, пользователь решит сам).
 
 ### Шаг финал. Отчёт
 
-1. **Что сделано:**
-   - Какие файлы изменены (CLAUDE.md / .doc-root.yaml / ...).
-   - Git-стейт: `git log --oneline -1`, `git branch -a`, `git remote -v`.
-2. **Что осталось:** список TODO-маркеров через `grep -rn 'TODO(/init)' CLAUDE.md content/`. Если пусто — поздравь.
-3. **Следующий шаг:** `/pm decompose <твоя первая фича>`.
+1. **Что сделано:** перечисли изменённые файлы, git-state
+2. **Что осталось:** `grep -rn 'TODO(/init)' CLAUDE.md content/` — если пусто, поздравь
+3. **Следующий шаг:** `/status` (увидеть стартовую картину) или `/delegate <первая задача>`
 
 ## Anti-scope
 
-- НЕ вызывай `/sa`, `/ba`, `/research` — на этапе init у проекта нет input-артефактов; их вызов нарушит контракт.
-- НЕ делай commit правок Фазы 2 — пользователь решает сам (можно опционально предложить `commit-commands:commit` в конце как next step).
-- НЕ создавай удалённый репозиторий — пользователь делает это сам и передаёт URL.
-- НЕ создавать `README.md` в `content/` — Gramax индексирует только `_index.md`.
+- НЕ вызывай `/legal`/`/finance`/`/docs` — нет input-артефактов
+- НЕ делай commit Phase 2 без подтверждения
+- НЕ создавай удалённый репозиторий
+- НЕ создавать `README.md` в `content/` — Gramax индексирует только `_index.md`
 
 ## Контракт `.doc-root.yaml` (для верификации)
 
-Минимальный набор полей, которые обязаны быть заполнены **после** Фазы 1:
-
 | Поле | Источник | Пример |
 |------|----------|--------|
-| `code` | `PROJECT_CODE` | `SD-AI-ASSISTANT` |
-| `title` | `PROJECT_NAME` | `SD AI Assistant` |
-| `description` | `PROJECT_DESCRIPTION` | `Knowledge base for AI Assistant for Service Desk` |
-| `editors` | `EDITOR_EMAIL` (можно дополнить руками) | `qutask@gmail.com` |
-
-Если `properties` адаптируются (Шаг 6.5) — обязательно обновить `filterProperties` синхронно, иначе фильтры в Gramax не появятся.
+| `code` | `TSN_CODE` | `TSN-LIFE-2` |
+| `title` | `TSN_NAME` | `ТСН Лайф 2` |
+| `description` | `TSN_DESCRIPTION` | `База знаний правления ТСН Лайф 2` |
+| `editors` | `EDITOR_EMAIL` | `chair@tsn-life-2.ru` |

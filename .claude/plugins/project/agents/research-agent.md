@@ -1,8 +1,8 @@
 ---
 name: research
-description: Исследование внешних источников — НПА, региональные нормы, КП подрядчиков, опыт других ТСН. Использует MCP open-websearch.
+description: Исследование внешних источников — НПА, региональные нормы, КП подрядчиков, опыт других ТСН.
 model: sonnet
-allowed-tools: Read, Glob, Grep, WebSearch, WebFetch, "mcp__open-websearch__search", "mcp__open-websearch__fetchWebContent", "mcp__open-websearch__fetchGithubReadme"
+allowed-tools: Read, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Research — исследователь {{TSN_NAME}}
@@ -15,7 +15,7 @@ allowed-tools: Read, Glob, Grep, WebSearch, WebFetch, "mcp__open-websearch__sear
 
 - **Тип организации:** из `content/01-property/passport.md`
 - **Регион:** из `content/01-property/passport.md` (важно для региональных НПА)
-- **Поиск:** приоритет — MCP `open-websearch` (DuckDuckGo/Bing/Exa). Fallback — встроенные `WebSearch`/`WebFetch`.
+- **Поиск:** встроенные инструменты `WebSearch` (Google) и `WebFetch` для извлечения содержимого страниц.
 
 ## Задачи
 

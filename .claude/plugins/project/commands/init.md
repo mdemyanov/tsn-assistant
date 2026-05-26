@@ -1,5 +1,5 @@
 ---
-description: "Инициализация ТСН (МКД/СНТ/ОНТ/ЖСК) из шаблона. Phase 1 — bash (плейсхолдеры, wipe .git, MCP install). Phase 2 — интервью по 8 темам с TODO-маркерами на пропусках. Пример: /init Лайф-2"
+description: "Инициализация ТСН (МКД/СНТ/ОНТ/ЖСК) из шаблона. Phase 1 — bash (плейсхолдеры, wipe .git). Phase 2 — интервью по 8 темам с TODO-маркерами на пропусках. Пример: /init Лайф-2"
 allowed-tools: Read, Edit, Write, Bash(git:*), Bash(bash scripts/init.sh:*), Bash(ls:*), Bash(grep:*)
 ---
 
@@ -57,14 +57,12 @@ bash scripts/init.sh "$TSN_NAME" "$TSN_CODE" "$TSN_DESCRIPTION" "$TSN_ADDRESS" "
 - Подставит плейсхолдеры в `CLAUDE.md`, `AGENTS.md`, `README.md`, `content/.doc-root.yaml`, `content/_index.md`, `content/01-property/passport.md`, `content/03-board/actors.md`
 - Wipe `.git`, `git init -b main`, initial commit с `Template: <url>@<sha>`, ветка `private`
 - Скопирует `.env.example` → `.env`
-- Зарегистрирует MCP-сервер `open-websearch` (user-scope, идемпотентно)
 
 3. **Верифицируй (после init.sh):**
    - `grep -RE '{{TSN_(NAME|CODE|DESCRIPTION|ADDRESS)}}|{{CHAIR_NAME}}|{{EDITOR_EMAIL}}' CLAUDE.md AGENTS.md README.md content/` — пусто
    - `git log --oneline -1` — initial commit с `Template:`
    - `git branch -a` — `main` + `private`
    - `uv run scripts/validate-content.py` — exit 0
-   - `claude mcp list 2>/dev/null | grep -q '^open-websearch:'` — true (или warning)
 
 ### Фаза 2. Интервью
 

@@ -11,7 +11,7 @@
 | `finance` | Тарифы/взносы, бюджет, биллинг, КП | subagent | Sonnet | `.claude/plugins/project/agents/finance-agent.md` | `/finance` |
 | `docs` | Создание документов по шаблонам | subagent | Sonnet | `.claude/plugins/project/agents/docs-agent.md` | `/docs`, `/decision`, `/protocol`, `/claim` |
 | `comms` | Тексты жителям/членам (skill infoinstyle) | subagent | Sonnet | `.claude/plugins/project/agents/comms-agent.md` | `/comms`, `/message` |
-| `research` | Web-исследование (MCP open-websearch) | subagent | Sonnet | `.claude/plugins/project/agents/research-agent.md` | `/research` |
+| `research` | Web-исследование (WebSearch/WebFetch) | subagent | Sonnet | `.claude/plugins/project/agents/research-agent.md` | `/research` |
 | `archivist` | Ingest PDF/email/фото | subagent | Sonnet | `.claude/plugins/project/agents/archivist-agent.md` | `/archivist`, `/ingest` |
 | `analyst` | Кросс-доменный анализ, сравнения | subagent | Sonnet | `.claude/plugins/project/agents/analyst-agent.md` | `/analyst`, `/contract` |
 

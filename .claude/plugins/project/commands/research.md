@@ -1,6 +1,6 @@
 ---
-description: "Поиск НПА, КП, кейсов через research-агента (MCP open-websearch). Пример: /research найди судебную практику по ст.158 ЖК РФ"
-allowed-tools: Agent, "mcp__open-websearch__search", "mcp__open-websearch__fetchWebContent"
+description: "Поиск НПА, КП, кейсов через research-агента (WebSearch/WebFetch). Пример: /research найди судебную практику по ст.158 ЖК РФ"
+allowed-tools: Agent
 ---
 
 Делегируй в субагент `research`:

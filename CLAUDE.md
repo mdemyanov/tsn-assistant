@@ -48,10 +48,6 @@
 - **superpowers@claude-plugins-official** — `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `verification-before-completion` и др.
 - **project@local** — 8 агентов (chair/legal/finance/docs/comms/research/archivist/analyst), 19 команд, скиллы `infoinstyle`, `correspondence-2`
 
-### MCP-серверы
-
-- **`open-websearch`** — поисковик по умолчанию для `research`-агента (DuckDuckGo + Bing + Exa). Регистрируется на `/init`, user-scope.
-
 ## Поток работы
 
 1. Запрос → `chair` оркестрирует, делегирует субагенту через `Agent` tool
@@ -137,11 +133,30 @@ Bypass для hotfix: trailer `skip-drift: hotfix — <описание>` в com
 ## Красные линии
 
 - Расхождение нижестоящего слоя с вышестоящим без обновления upstream (или без `skip-drift:` trailer) — блокер для `/review`
-- НЕ публиковать секреты (`.env`, токены, API-ключи, credentials)
+- НЕ публиковать секреты (`.env`, токены, API-ключи, credentials, OAuth refresh-токены, cookies сессий)
+- НЕ публиковать **внутренние URL** (стенды, dev-сервисы, корпоративные хосты) и идентификаторы клиентских инсталляций в публичной ветке
 - НЕ публиковать ПДн (паспорта, контакты собственников/членов без согласия)
 - НЕ менять `.doc-root.yaml` и `.gramax/` без согласования
 - НЕ создавать статьи в `content/` без обязательных properties (см. `.doc-root.yaml`)
 - Tests/линтеры (если в проекте есть) — зелёные перед commit
+
+### Подготовка к публикации шаблона (private → public / push в публичный remote)
+
+Удаление файла в HEAD **не очищает git-историю** — секрет остаётся в blob'ах и виден через `git log -p`, `git show <sha>`, GitHub UI. Перед публикацией обязательно:
+
+1. **Аудит истории** на секреты во всех ветках и тегах:
+   ```bash
+   git log --all -p -- .env '*.env' '**/secrets*' '**/credentials*'
+   git grep -nE 'Bearer [A-Za-z0-9._-]{16,}|api[_-]?key|secret|password' $(git rev-list --all) | head
+   ```
+   Дополнительно прогнать `gitleaks detect --no-banner` или `trufflehog git file://.` перед публикацией.
+2. **Перевыпустить (revoke + rotate)** все скомпрометированные токены/ключи у владельца сервиса. Чистка истории **не отменяет** факт утечки — если коммит уже был на публичном/общедоступном remote, токен считается раскрытым.
+3. **Переписать историю** через `git filter-repo` (`--invert-paths --path <file>` для удаления файла, `--replace-text` для замены строк), затем `git push --force-with-lease` во все ветки/теги (только после подтверждения владельца репозитория).
+4. **Удалить рефы**, в которых остался секрет: stash, reflog (`git reflog expire --expire=now --all && git gc --prune=now --aggressive`), старые release-теги.
+5. **Проверить, что чистка прошла:** повторить аудит из шага 1 — `git log --all` не должен находить ни токенов, ни внутренних URL.
+6. **Добавить guard'ы** в `.gitignore` (`.env*`, `*.pem`, `*credentials*`) и pre-commit hook (`gitleaks protect --staged`) — чтобы повторно не утекло.
+
+Если шаблон уже опубликован и в истории найден секрет — действовать в порядке: **revoke токена → уведомить владельца сервиса → переписать историю → force-push → ревизия логов доступа сервиса**.
 
 ### Project-specific
 

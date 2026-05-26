@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # init.sh — первичная инициализация TSN-assistant из шаблона.
-# Подставляет плейсхолдеры, wipe .git, initial commit, ветка private, MCP install.
+# Подставляет плейсхолдеры, wipe .git, initial commit, ветка private.
 
 set -euo pipefail
 
@@ -161,31 +161,7 @@ if [[ -f .env.example ]] && [[ ! -f .env ]]; then
   echo "✓ created .env (заполни секреты при необходимости)"
 fi
 
-# 11. MCP install (open-websearch, user-scope)
-echo ""
-echo "=== MCP ==="
-if [[ "${INIT_SKIP_MCP:-0}" == "1" ]]; then
-  echo "↷ skipping MCP install (INIT_SKIP_MCP=1)"
-elif ! command -v claude >/dev/null 2>&1; then
-  echo "WARNING: CLI 'claude' не найден в PATH — пропускаю установку open-websearch."
-  echo "  Установи Claude Code и выполни вручную:"
-  echo "    claude mcp add -s user -t stdio open-websearch \\"
-  echo "      --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo \\"
-  echo "      ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa \\"
-  echo "      -- npx open-websearch@latest"
-elif claude mcp list 2>/dev/null | grep -qE '^open-websearch:'; then
-  echo "✓ MCP open-websearch уже зарегистрирован (skip)"
-else
-  if claude mcp add -s user -t stdio open-websearch \
-      --env MODE=stdio DEFAULT_SEARCH_ENGINE=duckduckgo ALLOWED_SEARCH_ENGINES=duckduckgo,bing,exa \
-      -- npx open-websearch@latest >/dev/null 2>&1; then
-    echo "✓ установлен MCP open-websearch (user-scope)"
-  else
-    echo "WARNING: не удалось зарегистрировать open-websearch — research-агент останется на WebFetch/WebSearch."
-  fi
-fi
-
-# 12. Подсказка
+# 11. Подсказка
 echo ""
 echo "Готово (Phase 1). Следующие шаги:"
 echo "  1. Открой репо в Claude Code и выполни /init — Phase 2 (интервью)."
